@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "685571696877",
+    "project_id": "stegn-6aed8",
+    "storage_bucket": "stegn-6aed8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:685571696877:android:cb4192d202ea48ddb584e4",
+        "android_client_info": {
+          "package_name": "com.example.final_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCb_v81oCZl2d8eqLb3jKdCv1EDer5XDhU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:685571696877:android:09fa593c0be2a7fbb584e4",
+        "android_client_info": {
+          "package_name": "com.stegnapp.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCb_v81oCZl2d8eqLb3jKdCv1EDer5XDhU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
