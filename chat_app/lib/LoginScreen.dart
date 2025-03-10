@@ -71,7 +71,7 @@ class _LoginscreenState extends State<Loginscreen> {
           SizedBox(height: size.height / 40),
           GestureDetector(
             onTap: () async => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const Createaccount())),
+                .push(MaterialPageRoute(builder: (_) => CreateAccount())),
             child: const Text(
               "Create Account",
               style: TextStyle(
@@ -86,7 +86,8 @@ class _LoginscreenState extends State<Loginscreen> {
   }
 
   Widget customButton(Size size) {
-    return GestureDetector(onTap: ,
+    return GestureDetector(
+      onTap: () {},
       child: Container(
         height: size.height / 14,
         width: size.width / 1.2,
