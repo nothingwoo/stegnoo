@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:final_app/services/chat/chat_services.dart';
+import 'image_button.dart';
+// Ensure this import is correct
 
 class ChatPage extends StatefulWidget {
   final String receiverEmail;
@@ -37,10 +39,12 @@ class _ChatPageState extends State<ChatPage> {
           .collection('users')
           .doc(widget.receiverID)
           .get();
-      
+
       if (userDoc.exists) {
         setState(() {
-          receiverUsername = (userDoc.data() as Map<String, dynamic>)['username'] ?? widget.receiverEmail;
+          receiverUsername =
+              (userDoc.data() as Map<String, dynamic>)['username'] ??
+                  widget.receiverEmail;
         });
       }
     } catch (e) {
@@ -61,10 +65,20 @@ class _ChatPageState extends State<ChatPage> {
       await _chatServices.sendMessage(
         widget.receiverID,
         _messageController.text.trim(),
+        isImage: false, // Explicitly set isImage to false for text messages
       );
       _messageController.clear();
       _scrollToBottom();
     }
+  }
+
+  void _sendImageMessage(String imageUrl) async {
+    await _chatServices.sendMessage(
+      widget.receiverID,
+      imageUrl, // Send the image URL as the message
+      isImage: true, // Indicate that this is an image message
+    );
+    _scrollToBottom();
   }
 
   void _scrollToBottom() {
@@ -102,7 +116,9 @@ class _ChatPageState extends State<ChatPage> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasData && snapshot.data!.exists) {
-                  bool isOnline = (snapshot.data!.data() as Map<String, dynamic>)['isOnline'] ?? false;
+                  bool isOnline = (snapshot.data!.data()
+                          as Map<String, dynamic>)['isOnline'] ??
+                      false;
                   return Text(
                     isOnline ? 'Active now' : 'Offline',
                     style: TextStyle(
@@ -122,8 +138,8 @@ class _ChatPageState extends State<ChatPage> {
         children: [
           Expanded(
             child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A), // Dark background
+              decoration: const BoxDecoration(
+                color: Color(0xFF1A1A1A), // Dark background
               ),
               child: StreamBuilder(
                 stream: _chatServices.getMessages(
@@ -152,13 +168,16 @@ class _ChatPageState extends State<ChatPage> {
                     padding: const EdgeInsets.all(8),
                     itemCount: snapshot.data!.docs.length,
                     itemBuilder: (context, index) {
-                      var messageData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                      var messageData = snapshot.data!.docs[index].data()
+                          as Map<String, dynamic>;
                       var timestamp = messageData['timestamp'] as Timestamp?;
                       var timeString = timestamp != null
                           ? DateFormat('HH:mm').format(timestamp.toDate())
                           : '';
-                      
-                      var isSender = messageData['senderId'] == _auth.currentUser!.uid;
+                      var isSender =
+                          messageData['senderId'] == _auth.currentUser!.uid;
+                      var isImage = messageData['isImage'] ?? false;
+                      var message = messageData['message'] as String? ?? '';
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -166,50 +185,97 @@ class _ChatPageState extends State<ChatPage> {
                           mainAxisAlignment: isSender
                               ? MainAxisAlignment.end
                               : MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             if (!isSender) const SizedBox(width: 8),
-                            Container(
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width * 0.7,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSender
-                                    ? Theme.of(context).primaryColor
-                                    : const Color(0xFF2D2D2D), // Dark message bubbles
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: const Offset(0, 1),
+                            if (isImage && message.isNotEmpty)
+                              Container(
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                      MediaQuery.of(context).size.width * 0.6,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    message,
+                                    loadingBuilder: (BuildContext context,
+                                        Widget child,
+                                        ImageChunkEvent? loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (BuildContext context,
+                                        Object error, StackTrace? stackTrace) {
+                                      return const Text('Failed to load image',
+                                          style: TextStyle(color: Colors.red));
+                                    },
                                   ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    messageData['message'],
-                                    style: TextStyle(
-                                      color: isSender ? Colors.white : Colors.white.withOpacity(0.87),
+                                ),
+                              )
+                            else
+                              Container(
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                      MediaQuery.of(context).size.width * 0.7,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isSender
+                                      ? Theme.of(context).primaryColor
+                                      : const Color(
+                                          0xFF2D2D2D), // Dark message bubbles
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      spreadRadius: 1,
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    timeString,
-                                    style: TextStyle(
-                                      color: isSender
-                                          ? Colors.white.withOpacity(0.6)
-                                          : Colors.white.withOpacity(0.4),
-                                      fontSize: 10,
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message,
+                                      style: TextStyle(
+                                        color: isSender
+                                            ? Colors.white
+                                            : Colors.white.withOpacity(0.87),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      timeString,
+                                      style: TextStyle(
+                                        color: isSender
+                                            ? Colors.white.withOpacity(0.6)
+                                            : Colors.white.withOpacity(0.4),
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            const SizedBox(width: 5),
+                            Text(
+                              timeString,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.4),
+                                fontSize: 10,
                               ),
                             ),
                             if (isSender) const SizedBox(width: 8),
@@ -240,13 +306,17 @@ class _ChatPageState extends State<ChatPage> {
             ),
             child: Row(
               children: [
+                ImageUploadButton(
+                    onImageUploaded: _sendImageMessage), // Image upload button
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
                     style: const TextStyle(color: Colors.white), // White text
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      hintStyle:
+                          TextStyle(color: Colors.white.withOpacity(0.5)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25),
                         borderSide: BorderSide.none,

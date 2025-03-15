@@ -17,7 +17,8 @@ class ChatServices {
   }
 
   // Send a message with additional metadata
-  Future<void> sendMessage(String receiverId, String message) async {
+  Future<void> sendMessage(String receiverId, String message,
+      {required bool isImage}) async {
     final String senderId = getCurrentUserId() ?? '';
     final String senderEmail = _auth.currentUser?.email ?? '';
 
@@ -84,7 +85,8 @@ class ChatServices {
 
   // Get user details
   Future<Map<String, dynamic>?> getUserDetails(String userId) async {
-    DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
+    DocumentSnapshot userDoc =
+        await _firestore.collection('users').doc(userId).get();
     return userDoc.data() as Map<String, dynamic>?;
   }
 }
