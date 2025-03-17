@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:final_app/services/chat/chat_services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'image_button.dart';
-// Ensure this import is correct
 
 class ChatPage extends StatefulWidget {
   final String receiverEmail;
@@ -65,7 +65,7 @@ class _ChatPageState extends State<ChatPage> {
       await _chatServices.sendMessage(
         widget.receiverID,
         _messageController.text.trim(),
-        isImage: false, // Explicitly set isImage to false for text messages
+        isImage: false,
       );
       _messageController.clear();
       _scrollToBottom();
@@ -73,12 +73,19 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _sendImageMessage(String imageUrl) async {
-    await _chatServices.sendMessage(
-      widget.receiverID,
-      imageUrl, // Send the image URL as the message
-      isImage: true, // Indicate that this is an image message
-    );
-    _scrollToBottom();
+    try {
+      await _chatServices.sendMessage(
+        widget.receiverID,
+        imageUrl,
+        isImage: true,
+      );
+      _scrollToBottom();
+    } catch (e) {
+      print('Error sending image message: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending image: $e')),
+      );
+    }
   }
 
   void _scrollToBottom() {
@@ -96,9 +103,9 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A), // Dark background
+      backgroundColor: const Color(0xFF1A1A1A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2D2D2D), // Darker app bar
+        backgroundColor: const Color(0xFF2D2D2D),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -139,7 +146,7 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: Container(
               decoration: const BoxDecoration(
-                color: Color(0xFF1A1A1A), // Dark background
+                color: Color(0xFF1A1A1A),
               ),
               child: StreamBuilder(
                 stream: _chatServices.getMessages(
@@ -179,6 +186,10 @@ class _ChatPageState extends State<ChatPage> {
                       var isImage = messageData['isImage'] ?? false;
                       var message = messageData['message'] as String? ?? '';
 
+                      // Debug print to help diagnose issues
+                      print(
+                          "Message type: ${isImage ? 'Image' : 'Text'}, Content: $message");
+
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(
@@ -194,33 +205,65 @@ class _ChatPageState extends State<ChatPage> {
                                   maxWidth:
                                       MediaQuery.of(context).size.width * 0.6,
                                 ),
-                                child: ClipRRect(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: isSender
+                                      ? Theme.of(context)
+                                          .primaryColor
+                                          .withOpacity(0.3)
+                                      : const Color(0xFF2D2D2D),
                                   borderRadius: BorderRadius.circular(10),
-                                  child: Image.network(
-                                    message,
-                                    loadingBuilder: (BuildContext context,
-                                        Widget child,
-                                        ImageChunkEvent? loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress
-                                                      .expectedTotalBytes !=
-                                                  null
-                                              ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                              : null,
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (BuildContext context,
-                                        Object error, StackTrace? stackTrace) {
-                                      return const Text('Failed to load image',
-                                          style: TextStyle(color: Colors.red));
-                                    },
-                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        message,
+                                        loadingBuilder: (BuildContext context,
+                                            Widget child,
+                                            ImageChunkEvent? loadingProgress) {
+                                          if (loadingProgress == null)
+                                            return child;
+                                          return Center(
+                                            child: CircularProgressIndicator(
+                                              value: loadingProgress
+                                                          .expectedTotalBytes !=
+                                                      null
+                                                  ? loadingProgress
+                                                          .cumulativeBytesLoaded /
+                                                      loadingProgress
+                                                          .expectedTotalBytes!
+                                                  : null,
+                                            ),
+                                          );
+                                        },
+                                        errorBuilder: (BuildContext context,
+                                            Object error,
+                                            StackTrace? stackTrace) {
+                                          print("Image error: $error");
+                                          return Container(
+                                            padding: const EdgeInsets.all(8),
+                                            child: const Text(
+                                                'Failed to load image',
+                                                style: TextStyle(
+                                                    color: Colors.red)),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      timeString,
+                                      style: TextStyle(
+                                        color: isSender
+                                            ? Colors.white.withOpacity(0.6)
+                                            : Colors.white.withOpacity(0.4),
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               )
                             else
@@ -234,8 +277,7 @@ class _ChatPageState extends State<ChatPage> {
                                 decoration: BoxDecoration(
                                   color: isSender
                                       ? Theme.of(context).primaryColor
-                                      : const Color(
-                                          0xFF2D2D2D), // Dark message bubbles
+                                      : const Color(0xFF2D2D2D),
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
@@ -270,14 +312,6 @@ class _ChatPageState extends State<ChatPage> {
                                   ],
                                 ),
                               ),
-                            const SizedBox(width: 5),
-                            Text(
-                              timeString,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.4),
-                                fontSize: 10,
-                              ),
-                            ),
                             if (isSender) const SizedBox(width: 8),
                           ],
                         ),
@@ -290,7 +324,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF2D2D2D), // Dark input area
+              color: const Color(0xFF2D2D2D),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.2),
@@ -306,13 +340,12 @@ class _ChatPageState extends State<ChatPage> {
             ),
             child: Row(
               children: [
-                ImageUploadButton(
-                    onImageUploaded: _sendImageMessage), // Image upload button
+                ImageUploadButton(onImageUploaded: _sendImageMessage),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    style: const TextStyle(color: Colors.white), // White text
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
                       hintStyle:
@@ -322,7 +355,7 @@ class _ChatPageState extends State<ChatPage> {
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
-                      fillColor: const Color(0xFF404040), // Darker input field
+                      fillColor: const Color(0xFF404040),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 10,

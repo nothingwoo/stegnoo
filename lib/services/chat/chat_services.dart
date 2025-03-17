@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-//import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
 class ChatServices {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -16,8 +16,8 @@ class ChatServices {
     return _firestore.collection('users').snapshots();
   }
 
-  // Send a message with additional metadata
-  Future<void> sendMessage(String receiverId, String message,
+  // Send a message with support for text and image messages
+  Future<void> sendMessage(String receiverId, String content,
       {required bool isImage}) async {
     final String senderId = getCurrentUserId() ?? '';
     final String senderEmail = _auth.currentUser?.email ?? '';
@@ -30,35 +30,45 @@ class ChatServices {
       "senderId": senderId,
       "senderEmail": senderEmail,
       "receiverId": receiverId,
-      "message": message,
+      "message": content,
+      "isImage": isImage,
       "timestamp": timestamp,
       "isRead": false,
     };
 
-    // Add message to both users' chat collections
-    await _firestore
-        .collection('chats')
-        .doc(getChatRoomId(senderId, receiverId))
-        .collection('messages')
-        .add(messageData);
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(getChatRoomId(senderId, receiverId))
+          .collection('messages')
+          .add(messageData);
+    } catch (e) {
+      print('Error sending message: $e');
+      throw Exception('Failed to send message');
+    }
   }
 
   // Get chat room ID
   String getChatRoomId(String user1Id, String user2Id) {
-    // Sort IDs to ensure consistent chat room ID
     List<String> ids = [user1Id, user2Id];
     ids.sort();
     return '${ids[0]}_${ids[1]}';
   }
 
-  // Get messages between two users with better organization
-  Stream<QuerySnapshot> getMessages(String receiverId, String senderId) {
-    return _firestore
+  // Get messages with optional image filtering
+  Stream<QuerySnapshot> getMessages(String receiverId, String senderId,
+      {bool showImagesOnly = false}) {
+    Query query = _firestore
         .collection('chats')
         .doc(getChatRoomId(senderId, receiverId))
         .collection('messages')
-        .orderBy("timestamp", descending: false)
-        .snapshots();
+        .orderBy("timestamp", descending: false);
+
+    if (showImagesOnly) {
+      query = query.where('isImage', isEqualTo: true);
+    }
+
+    return query.snapshots();
   }
 
   // Mark message as read
@@ -72,15 +82,28 @@ class ChatServices {
         .update({'isRead': true});
   }
 
-  // Delete message
-  Future<void> deleteMessage(String messageId, String receiverId) async {
+  // Delete message (with optional image deletion)
+  Future<void> deleteMessage(String messageId, String receiverId,
+      {String? imageUrl}) async {
     final String senderId = getCurrentUserId() ?? '';
-    await _firestore
-        .collection('chats')
-        .doc(getChatRoomId(senderId, receiverId))
-        .collection('messages')
-        .doc(messageId)
-        .delete();
+
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(getChatRoomId(senderId, receiverId))
+          .collection('messages')
+          .doc(messageId)
+          .delete();
+
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        await firebase_storage.FirebaseStorage.instance
+            .refFromURL(imageUrl)
+            .delete();
+      }
+    } catch (e) {
+      print('Error deleting message: $e');
+      throw Exception('Failed to delete message');
+    }
   }
 
   // Get user details
