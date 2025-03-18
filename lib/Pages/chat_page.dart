@@ -6,6 +6,7 @@ import 'package:final_app/services/chat/chat_services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'image_button.dart';
 import 'video_button.dart'; // Import the VideoUploadButton
+import 'video_player.dart'; // Import the VideoPlayerPage
 
 class ChatPage extends StatefulWidget {
   final String receiverEmail;
@@ -207,10 +208,6 @@ class _ChatPageState extends State<ChatPage> {
                       var isVideo = messageData['isVideo'] ?? false;
                       var message = messageData['message'] as String? ?? '';
 
-                      // Debug print to help diagnose issues
-                      print(
-                          "Message type: ${isImage ? 'Image' : isVideo ? 'Video' : 'Text'}, Content: $message");
-
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(
@@ -288,31 +285,35 @@ class _ChatPageState extends State<ChatPage> {
                                 ),
                               )
                             else if (isVideo && message.isNotEmpty)
-                            // Video message bubble
-                              Container(
-                                constraints: BoxConstraints(
-                                  maxWidth:
-                                  MediaQuery.of(context).size.width * 0.6,
-                                ),
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: isSender
-                                      ? Theme.of(context)
-                                      .primaryColor
-                                      .withOpacity(0.3)
-                                      : const Color(0xFF2D2D2D),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        // Open video player or handle video tap
-                                        print("Opening video: $message");
-                                        // Implement video player navigation here
-                                      },
-                                      child: Stack(
+                              GestureDetector(
+                                onTap: () {
+                                  // Navigate to the VideoPlayerPage
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          VideoPlayerPage(videoUrl: message),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                    MediaQuery.of(context).size.width * 0.6,
+                                  ),
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: isSender
+                                        ? Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.3)
+                                        : const Color(0xFF2D2D2D),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Stack(
                                         alignment: Alignment.center,
                                         children: [
                                           Container(
@@ -326,8 +327,7 @@ class _ChatPageState extends State<ChatPage> {
                                               child: Text(
                                                 "Video",
                                                 style: TextStyle(
-                                                  color: Colors.white70,
-                                                ),
+                                                    color: Colors.white70),
                                               ),
                                             ),
                                           ),
@@ -338,18 +338,18 @@ class _ChatPageState extends State<ChatPage> {
                                           ),
                                         ],
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      timeString,
-                                      style: TextStyle(
-                                        color: isSender
-                                            ? Colors.white.withOpacity(0.6)
-                                            : Colors.white.withOpacity(0.4),
-                                        fontSize: 10,
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        timeString,
+                                        style: TextStyle(
+                                          color: isSender
+                                              ? Colors.white.withOpacity(0.6)
+                                              : Colors.white.withOpacity(0.4),
+                                          fontSize: 10,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               )
                             else
@@ -428,7 +428,6 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 ImageUploadButton(onImageUploaded: _sendImageMessage),
                 const SizedBox(width: 8),
-                // Add VideoUploadButton here
                 VideoUploadButton(onVideoUploaded: _sendVideoMessage),
                 const SizedBox(width: 8),
                 Expanded(
