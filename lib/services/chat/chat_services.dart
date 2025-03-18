@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-//import 'package:flutter/material.dart';
 
 class ChatServices {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -32,6 +31,7 @@ class ChatServices {
       "message": message,
       "timestamp": timestamp,
       "isRead": false,
+      "isDeleted": false, // New field for tracking deletions
     };
 
     // Add message to both users' chat collections
@@ -50,7 +50,7 @@ class ChatServices {
     return '${ids[0]}_${ids[1]}';
   }
 
-  // Get messages between two users with better organization
+  // Get messages between two users
   Stream<QuerySnapshot> getMessages(String receiverId, String senderId) {
     return _firestore
         .collection('chats')
@@ -71,15 +71,29 @@ class ChatServices {
         .update({'isRead': true});
   }
 
-  // Delete message
-  Future<void> deleteMessage(String messageId, String receiverId) async {
+  // Delete message for "Me" or "Everyone"
+  Future<void> deleteMessage(String messageId, String receiverId, bool deleteForEveryone) async {
     final String senderId = getCurrentUserId() ?? '';
-    await _firestore
+
+    DocumentReference messageRef = _firestore
         .collection('chats')
         .doc(getChatRoomId(senderId, receiverId))
         .collection('messages')
-        .doc(messageId)
-        .delete();
+        .doc(messageId);
+
+    DocumentSnapshot messageSnapshot = await messageRef.get();
+
+    if (messageSnapshot.exists) {
+      Map<String, dynamic> messageData = messageSnapshot.data() as Map<String, dynamic>;
+
+      if (deleteForEveryone) {
+        // Delete the message for everyone
+        await messageRef.delete();
+      } else {
+        // Mark the message as deleted instead of deleting it fully
+        await messageRef.update({"isDeleted": true});
+      }
+    }
   }
 
   // Get user details

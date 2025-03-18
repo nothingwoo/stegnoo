@@ -44,7 +44,6 @@ class _ChatPageState extends State<ChatPage> {
         });
       }
     } catch (e) {
-      print("Error fetching username: $e");
       receiverUsername = widget.receiverEmail;
     }
   }
@@ -79,21 +78,26 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
+  void deleteMessage(String messageId, bool deleteForEveryone) async {
+    await _chatServices.deleteMessage(
+      messageId,
+      widget.receiverID,
+      deleteForEveryone,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A), // Dark background
+      backgroundColor: const Color(0xFF1A1A1A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2D2D2D), // Darker app bar
+        backgroundColor: const Color(0xFF2D2D2D),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               receiverUsername,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.white,
-              ),
+              style: const TextStyle(fontSize: 16, color: Colors.white),
             ),
             StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
@@ -105,10 +109,7 @@ class _ChatPageState extends State<ChatPage> {
                   bool isOnline = (snapshot.data!.data() as Map<String, dynamic>)['isOnline'] ?? false;
                   return Text(
                     isOnline ? 'Active now' : 'Offline',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isOnline ? Colors.green[400] : Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 12, color: isOnline ? Colors.green[400] : Colors.grey[500]),
                   );
                 }
                 return Container();
@@ -121,129 +122,128 @@ class _ChatPageState extends State<ChatPage> {
       body: Column(
         children: [
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A), // Dark background
-              ),
-              child: StreamBuilder(
-                stream: _chatServices.getMessages(
-                  widget.receiverID,
-                  _auth.currentUser!.uid,
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return const Center(
-                      child: Text(
-                        'Something went wrong',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    );
-                  }
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.white70,
-                      ),
-                    );
-                  }
+            child: StreamBuilder(
+              stream: _chatServices.getMessages(widget.receiverID, _auth.currentUser!.uid),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Something went wrong', style: TextStyle(color: Colors.white70)));
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Colors.white70));
+                }
 
-                  return ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(8),
-                    itemCount: snapshot.data!.docs.length,
-                    itemBuilder: (context, index) {
-                      var messageData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                      var timestamp = messageData['timestamp'] as Timestamp?;
-                      var timeString = timestamp != null
-                          ? DateFormat('HH:mm').format(timestamp.toDate())
-                          : '';
-                      
-                      var isSender = messageData['senderId'] == _auth.currentUser!.uid;
+                return ListView.separated(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(12),
+                  itemCount: snapshot.data!.docs.length,
+                  // Added separator for more space between messages
+                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    var messageData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                    var messageId = snapshot.data!.docs[index].id;
+                    var timestamp = messageData['timestamp'] as Timestamp?;
+                    var timeString = timestamp != null
+                        ? DateFormat('hh:mm a').format(timestamp.toDate())
+                        : '';
+                    var isSender = messageData['senderId'] == _auth.currentUser!.uid;
+                    var isDeleted = messageData['isDeleted'] ?? false;
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          mainAxisAlignment: isSender
-                              ? MainAxisAlignment.end
-                              : MainAxisAlignment.start,
-                          children: [
-                            if (!isSender) const SizedBox(width: 8),
-                            Container(
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width * 0.7,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSender
-                                    ? Theme.of(context).primaryColor
-                                    : const Color(0xFF2D2D2D), // Dark message bubbles
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    messageData['message'],
-                                    style: TextStyle(
-                                      color: isSender ? Colors.white : Colors.white.withOpacity(0.87),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    timeString,
-                                    style: TextStyle(
-                                      color: isSender
-                                          ? Colors.white.withOpacity(0.6)
-                                          : Colors.white.withOpacity(0.4),
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                    return GestureDetector(
+                      onLongPress: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: const Text("Delete Message"),
+                              content: const Text("Do you want to delete this message?"),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    deleteMessage(messageId, false); // Delete only for me
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text("Delete for Me"),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    deleteMessage(messageId, true); // Delete for everyone
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text("Delete for Everyone"),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text("Cancel"),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      child: Row(
+                        mainAxisAlignment: isSender ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        children: [
+                          if (!isSender) const SizedBox(width: 8),
+                          Container(
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width * 0.7,
                             ),
-                            if (isSender) const SizedBox(width: 8),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isSender ? Theme.of(context).primaryColor : const Color(0xFF2D2D2D),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  spreadRadius: 1,
+                                  blurRadius: 2,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isDeleted ? "This message was deleted" : messageData['message'],
+                                  style: TextStyle(
+                                    fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
+                                    color: isDeleted
+                                        ? Colors.white.withOpacity(0.5)
+                                        : (isSender ? Colors.white : Colors.white.withOpacity(0.87)),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  timeString,
+                                  style: TextStyle(
+                                    color: isSender ? Colors.white.withOpacity(0.6) : Colors.white.withOpacity(0.4),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSender) const SizedBox(width: 8),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF2D2D2D), // Dark input area
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 2,
-                  offset: const Offset(0, -1),
-                ),
-              ],
+              color: const Color(0xFF2D2D2D),
             ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    style: const TextStyle(color: Colors.white), // White text
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
                       hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
@@ -252,30 +252,15 @@ class _ChatPageState extends State<ChatPage> {
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
-                      fillColor: const Color(0xFF404040), // Darker input field
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
+                      fillColor: const Color(0xFF404040),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     ),
-                    textCapitalization: TextCapitalization.sentences,
-                    minLines: 1,
-                    maxLines: 5,
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    onPressed: sendMessage,
-                    icon: const Icon(
-                      Icons.send,
-                      color: Colors.white,
-                    ),
-                  ),
+                IconButton(
+                  onPressed: sendMessage,
+                  icon: const Icon(Icons.send, color: Colors.white),
                 ),
               ],
             ),
