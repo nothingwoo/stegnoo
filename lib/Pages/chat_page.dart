@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:final_app/services/chat/chat_services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'image_button.dart';
+import 'video_button.dart'; // Import the VideoUploadButton
 
 class ChatPage extends StatefulWidget {
   final String receiverEmail;
@@ -66,6 +67,7 @@ class _ChatPageState extends State<ChatPage> {
         widget.receiverID,
         _messageController.text.trim(),
         isImage: false,
+        isVideo: false,
       );
       _messageController.clear();
       _scrollToBottom();
@@ -78,12 +80,30 @@ class _ChatPageState extends State<ChatPage> {
         widget.receiverID,
         imageUrl,
         isImage: true,
+        isVideo: false,
       );
       _scrollToBottom();
     } catch (e) {
       print('Error sending image message: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sending image: $e')),
+      );
+    }
+  }
+
+  void _sendVideoMessage(String videoUrl) async {
+    try {
+      await _chatServices.sendMessage(
+        widget.receiverID,
+        videoUrl,
+        isImage: false,
+        isVideo: true,
+      );
+      _scrollToBottom();
+    } catch (e) {
+      print('Error sending video message: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending video: $e')),
       );
     }
   }
@@ -124,7 +144,7 @@ class _ChatPageState extends State<ChatPage> {
               builder: (context, snapshot) {
                 if (snapshot.hasData && snapshot.data!.exists) {
                   bool isOnline = (snapshot.data!.data()
-                          as Map<String, dynamic>)['isOnline'] ??
+                  as Map<String, dynamic>)['isOnline'] ??
                       false;
                   return Text(
                     isOnline ? 'Active now' : 'Offline',
@@ -176,7 +196,7 @@ class _ChatPageState extends State<ChatPage> {
                     itemCount: snapshot.data!.docs.length,
                     itemBuilder: (context, index) {
                       var messageData = snapshot.data!.docs[index].data()
-                          as Map<String, dynamic>;
+                      as Map<String, dynamic>;
                       var timestamp = messageData['timestamp'] as Timestamp?;
                       var timeString = timestamp != null
                           ? DateFormat('HH:mm').format(timestamp.toDate())
@@ -184,11 +204,12 @@ class _ChatPageState extends State<ChatPage> {
                       var isSender =
                           messageData['senderId'] == _auth.currentUser!.uid;
                       var isImage = messageData['isImage'] ?? false;
+                      var isVideo = messageData['isVideo'] ?? false;
                       var message = messageData['message'] as String? ?? '';
 
                       // Debug print to help diagnose issues
                       print(
-                          "Message type: ${isImage ? 'Image' : 'Text'}, Content: $message");
+                          "Message type: ${isImage ? 'Image' : isVideo ? 'Video' : 'Text'}, Content: $message");
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -203,14 +224,14 @@ class _ChatPageState extends State<ChatPage> {
                               Container(
                                 constraints: BoxConstraints(
                                   maxWidth:
-                                      MediaQuery.of(context).size.width * 0.6,
+                                  MediaQuery.of(context).size.width * 0.6,
                                 ),
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
                                   color: isSender
                                       ? Theme.of(context)
-                                          .primaryColor
-                                          .withOpacity(0.3)
+                                      .primaryColor
+                                      .withOpacity(0.3)
                                       : const Color(0xFF2D2D2D),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -229,12 +250,12 @@ class _ChatPageState extends State<ChatPage> {
                                           return Center(
                                             child: CircularProgressIndicator(
                                               value: loadingProgress
-                                                          .expectedTotalBytes !=
-                                                      null
+                                                  .expectedTotalBytes !=
+                                                  null
                                                   ? loadingProgress
-                                                          .cumulativeBytesLoaded /
-                                                      loadingProgress
-                                                          .expectedTotalBytes!
+                                                  .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
                                                   : null,
                                             ),
                                           );
@@ -266,11 +287,76 @@ class _ChatPageState extends State<ChatPage> {
                                   ],
                                 ),
                               )
+                            else if (isVideo && message.isNotEmpty)
+                            // Video message bubble
+                              Container(
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                  MediaQuery.of(context).size.width * 0.6,
+                                ),
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: isSender
+                                      ? Theme.of(context)
+                                      .primaryColor
+                                      .withOpacity(0.3)
+                                      : const Color(0xFF2D2D2D),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () {
+                                        // Open video player or handle video tap
+                                        print("Opening video: $message");
+                                        // Implement video player navigation here
+                                      },
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Container(
+                                            height: 150,
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              color: Colors.black54,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Center(
+                                              child: Text(
+                                                "Video",
+                                                style: TextStyle(
+                                                  color: Colors.white70,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.play_circle_fill,
+                                            size: 50,
+                                            color: Colors.white70,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      timeString,
+                                      style: TextStyle(
+                                        color: isSender
+                                            ? Colors.white.withOpacity(0.6)
+                                            : Colors.white.withOpacity(0.4),
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
                             else
                               Container(
                                 constraints: BoxConstraints(
                                   maxWidth:
-                                      MediaQuery.of(context).size.width * 0.7,
+                                  MediaQuery.of(context).size.width * 0.7,
                                 ),
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 10),
@@ -342,6 +428,9 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 ImageUploadButton(onImageUploaded: _sendImageMessage),
                 const SizedBox(width: 8),
+                // Add VideoUploadButton here
+                VideoUploadButton(onVideoUploaded: _sendVideoMessage),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
@@ -349,7 +438,7 @@ class _ChatPageState extends State<ChatPage> {
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
                       hintStyle:
-                          TextStyle(color: Colors.white.withOpacity(0.5)),
+                      TextStyle(color: Colors.white.withOpacity(0.5)),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25),
                         borderSide: BorderSide.none,

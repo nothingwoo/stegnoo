@@ -16,9 +16,9 @@ class ChatServices {
     return _firestore.collection('users').snapshots();
   }
 
-  // Send a message with support for text and image messages
+  // Send a message with support for text, image, and video messages
   Future<void> sendMessage(String receiverId, String content,
-      {required bool isImage}) async {
+      {bool isImage = false, bool isVideo = false}) async {
     final String senderId = getCurrentUserId() ?? '';
     final String senderEmail = _auth.currentUser?.email ?? '';
 
@@ -32,6 +32,7 @@ class ChatServices {
       "receiverId": receiverId,
       "message": content,
       "isImage": isImage,
+      "isVideo": isVideo,
       "timestamp": timestamp,
       "isRead": false,
     };
@@ -55,9 +56,9 @@ class ChatServices {
     return '${ids[0]}_${ids[1]}';
   }
 
-  // Get messages with optional image filtering
+  // Get messages with optional image and video filtering
   Stream<QuerySnapshot> getMessages(String receiverId, String senderId,
-      {bool showImagesOnly = false}) {
+      {bool showImagesOnly = false, bool showVideosOnly = false}) {
     Query query = _firestore
         .collection('chats')
         .doc(getChatRoomId(senderId, receiverId))
@@ -66,6 +67,8 @@ class ChatServices {
 
     if (showImagesOnly) {
       query = query.where('isImage', isEqualTo: true);
+    } else if (showVideosOnly) {
+      query = query.where('isVideo', isEqualTo: true);
     }
 
     return query.snapshots();
@@ -82,9 +85,9 @@ class ChatServices {
         .update({'isRead': true});
   }
 
-  // Delete message (with optional image deletion)
+  // Delete message (with optional image or video deletion)
   Future<void> deleteMessage(String messageId, String receiverId,
-      {String? imageUrl}) async {
+      {String? fileUrl}) async {
     final String senderId = getCurrentUserId() ?? '';
 
     try {
@@ -95,9 +98,9 @@ class ChatServices {
           .doc(messageId)
           .delete();
 
-      if (imageUrl != null && imageUrl.isNotEmpty) {
+      if (fileUrl != null && fileUrl.isNotEmpty) {
         await firebase_storage.FirebaseStorage.instance
-            .refFromURL(imageUrl)
+            .refFromURL(fileUrl)
             .delete();
       }
     } catch (e) {
@@ -109,7 +112,7 @@ class ChatServices {
   // Get user details
   Future<Map<String, dynamic>?> getUserDetails(String userId) async {
     DocumentSnapshot userDoc =
-        await _firestore.collection('users').doc(userId).get();
+    await _firestore.collection('users').doc(userId).get();
     return userDoc.data() as Map<String, dynamic>?;
   }
 }
