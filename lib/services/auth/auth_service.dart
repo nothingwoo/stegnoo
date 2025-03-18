@@ -1,8 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
-  // Instance of FirebaseAuth
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -19,8 +18,8 @@ class AuthService {
         password: password,
       );
 
-      // Optionally, you can fetch user data from Firestore here
-      // DocumentSnapshot userDoc = await _firestore.collection("users").doc(userCredential.user!.uid).get();
+      // Update user status to online
+      await updateUserStatusOnline(userCredential.user!.uid);
 
       return userCredential;
     } on FirebaseAuthException catch (e) {
@@ -43,6 +42,8 @@ class AuthService {
           'uid': userCredential.user!.uid,
           'email': email,
           'username': username, // Store the username
+          'isOnline': true, // Set user status to online
+          'lastSeen': FieldValue.serverTimestamp(), // Track last seen time
           'createdAt': FieldValue.serverTimestamp(), // Optional: track account creation time
         },
       );
@@ -56,10 +57,31 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Update user status to offline
+        await updateUserStatusOffline(user.uid);
+      }
       await _auth.signOut();
     } catch (e) {
       throw Exception('Error during sign-out: $e');
     }
+  }
+
+  // Update user status to online
+  Future<void> updateUserStatusOnline(String uid) async {
+    await _firestore.collection('users').doc(uid).update({
+      'isOnline': true,
+      'lastSeen': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Update user status to offline
+  Future<void> updateUserStatusOffline(String uid) async {
+    await _firestore.collection('users').doc(uid).update({
+      'isOnline': false,
+      'lastSeen': FieldValue.serverTimestamp(),
+    });
   }
 
   // Get currently signed-in user

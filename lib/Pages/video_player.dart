@@ -34,7 +34,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Video Player'),
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.white,
       ),
       backgroundColor: Colors.black,
       body: Center(

@@ -1,6 +1,6 @@
 import 'package:final_app/Pages/home_page.dart';
-// import 'package:final_app/auth/auth_service.dart';
 import 'package:final_app/services/auth/login_or_register.dart';
+import 'package:final_app/services/auth/auth_service.dart'; // Import AuthService
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -9,18 +9,30 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: StreamBuilder (  
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context,snapshot){
+    final AuthService authService = AuthService(); // Create an instance of AuthService
 
-          //user is logged in
-          if(snapshot.hasData){
-            return  HomePage();
+    return Scaffold(
+      body: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.active) {
+            final user = snapshot.data;
+
+            if (user != null) {
+              // User is logged in
+              authService.updateUserStatusOnline(user.uid); // Update status to online
+              return HomePage();
+            } else {
+              // User is logged out
+              authService.updateUserStatusOffline(user?.uid ?? ''); // Update status to offline
+              return const LoginOrRegister();
+            }
           }
-          else{
-            return const LoginOrRegister();
-          }
+
+          // Show a loading indicator while checking the auth state
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
         },
       ),
     );
