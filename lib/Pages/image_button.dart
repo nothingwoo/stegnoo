@@ -41,7 +41,8 @@ class _ImageUploadButtonState extends State<ImageUploadButton> {
 
         // Set metadata with content type
         firebase_storage.SettableMetadata metadata =
-            firebase_storage.SettableMetadata(contentType: mimeType);
+            firebase_storage.SettableMetadata(
+                contentType: mimeType ?? 'image/png');
 
         if (kIsWeb) {
           Uint8List bytes = await image.readAsBytes();
@@ -55,6 +56,8 @@ class _ImageUploadButtonState extends State<ImageUploadButton> {
 
         await uploadTask.whenComplete(() async {
           String imageUrl = await storageRef.getDownloadURL();
+          print('Fresh URL: $imageUrl');
+
           widget.onImageUploaded(imageUrl);
         });
 
