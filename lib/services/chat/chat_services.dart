@@ -1,118 +1,131 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
 class ChatServices {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Constants for Firestore collections
+  static const String usersCollection = 'users';
+  static const String chatsCollection = 'chats';
+  static const String messagesCollection = 'messages';
+
   // Get current user ID
-  String? getCurrentUserId() {
-    return _auth.currentUser?.uid;
-  }
+  String get currentUserId => _auth.currentUser!.uid;
 
-  // Get all users stream
+  // Get a stream of all users except the current user
   Stream<QuerySnapshot> getUsersStream() {
-    return _firestore.collection('users').snapshots();
-  }
-
-  // Send a message with support for text, image, and video messages
-  Future<void> sendMessage(String receiverId, String content,
-      {bool isImage = false, bool isVideo = false}) async {
-    final String senderId = getCurrentUserId() ?? '';
-    final String senderEmail = _auth.currentUser?.email ?? '';
-
-    // Get the current timestamp
-    final timestamp = FieldValue.serverTimestamp();
-
-    // Create message data
-    Map<String, dynamic> messageData = {
-      "senderId": senderId,
-      "senderEmail": senderEmail,
-      "receiverId": receiverId,
-      "message": content,
-      "isImage": isImage,
-      "isVideo": isVideo,
-      "timestamp": timestamp,
-      "isRead": false,
-    };
-
     try {
-      await _firestore
-          .collection('chats')
-          .doc(getChatRoomId(senderId, receiverId))
-          .collection('messages')
-          .add(messageData);
+      return _firestore
+          .collection(usersCollection)
+          .where('uid', isNotEqualTo: currentUserId)
+          .snapshots();
     } catch (e) {
-      print('Error sending message: $e');
-      throw Exception('Failed to send message');
+      throw Exception('Failed to fetch users: $e');
     }
   }
 
-  // Get chat room ID
-  String getChatRoomId(String user1Id, String user2Id) {
-    List<String> ids = [user1Id, user2Id];
-    ids.sort();
-    return '${ids[0]}_${ids[1]}';
-  }
-
-  // Get messages with optional image and video filtering
-  Stream<QuerySnapshot> getMessages(String receiverId, String senderId,
-      {bool showImagesOnly = false, bool showVideosOnly = false}) {
-    Query query = _firestore
-        .collection('chats')
-        .doc(getChatRoomId(senderId, receiverId))
-        .collection('messages')
-        .orderBy("timestamp", descending: false);
-
-    if (showImagesOnly) {
-      query = query.where('isImage', isEqualTo: true);
-    } else if (showVideosOnly) {
-      query = query.where('isVideo', isEqualTo: true);
-    }
-
-    return query.snapshots();
-  }
-
-  // Mark message as read
-  Future<void> markMessageAsRead(String messageId, String receiverId) async {
-    final String senderId = getCurrentUserId() ?? '';
-    await _firestore
-        .collection('chats')
-        .doc(getChatRoomId(senderId, receiverId))
-        .collection('messages')
-        .doc(messageId)
-        .update({'isRead': true});
-  }
-
-  // Delete message (with optional image or video deletion)
-  Future<void> deleteMessage(String messageId, String receiverId,
-      {String? fileUrl}) async {
-    final String senderId = getCurrentUserId() ?? '';
-
+  // Get chat messages between two users
+  Stream<QuerySnapshot> getMessages(String receiverId, String currentUserId) {
     try {
-      await _firestore
-          .collection('chats')
-          .doc(getChatRoomId(senderId, receiverId))
-          .collection('messages')
-          .doc(messageId)
-          .delete();
+      // Create a chat room ID using both user IDs
+      String chatRoomId = _getChatRoomId(receiverId, currentUserId);
 
-      if (fileUrl != null && fileUrl.isNotEmpty) {
-        await firebase_storage.FirebaseStorage.instance
-            .refFromURL(fileUrl)
-            .delete();
-      }
+      return _firestore
+          .collection(chatsCollection)
+          .doc(chatRoomId)
+          .collection(messagesCollection)
+          .orderBy('timestamp', descending: false)
+          .snapshots();
     } catch (e) {
-      print('Error deleting message: $e');
-      throw Exception('Failed to delete message');
+      throw Exception('Failed to fetch messages: $e');
     }
   }
 
-  // Get user details
-  Future<Map<String, dynamic>?> getUserDetails(String userId) async {
-    DocumentSnapshot userDoc =
-    await _firestore.collection('users').doc(userId).get();
-    return userDoc.data() as Map<String, dynamic>?;
+  // Send a message to another user
+  Future<void> sendMessage(
+      String receiverId,
+      String message, {
+        bool isImage = false,
+        bool isVideo = false,
+        bool isAudio = false,
+      }) async {
+    try {
+      // Get current user info
+      final String currentUserId = _auth.currentUser!.uid;
+      final Timestamp timestamp = Timestamp.now();
+
+      // Create a chat room ID
+      String chatRoomId = _getChatRoomId(receiverId, currentUserId);
+
+      // Add message to Firestore
+      await _firestore
+          .collection(chatsCollection)
+          .doc(chatRoomId)
+          .collection(messagesCollection)
+          .add({
+        'senderId': currentUserId,
+        'receiverId': receiverId,
+        'message': message,
+        'timestamp': timestamp,
+        'isImage': isImage,
+        'isVideo': isVideo,
+        'isAudio': isAudio,
+      });
+
+      // Update chat room metadata
+      await _updateChatRoomMetadata(
+        chatRoomId,
+        currentUserId,
+        receiverId,
+        message,
+        timestamp,
+      );
+    } catch (e) {
+      throw Exception('Failed to send message: $e');
+    }
+  }
+
+  // Send an image message to another user
+  Future<void> sendImageMessage(String receiverId, String imageUrl) async {
+    await sendMessage(receiverId, imageUrl, isImage: true);
+  }
+
+  // Send a video message to another user
+  Future<void> sendVideoMessage(String receiverId, String videoUrl) async {
+    await sendMessage(receiverId, videoUrl, isVideo: true);
+  }
+
+  // Send an audio message to another user
+  Future<void> sendAudioMessage(String receiverId, String audioUrl) async {
+    await sendMessage(receiverId, audioUrl, isAudio: true);
+  }
+
+  // Update the metadata for a chat room
+  Future<void> _updateChatRoomMetadata(
+      String chatRoomId,
+      String currentUserId,
+      String receiverId,
+      String lastMessage,
+      Timestamp timestamp,
+      ) async {
+    try {
+      // Update the chat room metadata with last message info
+      await _firestore.collection(chatsCollection).doc(chatRoomId).set({
+        'users': [currentUserId, receiverId],
+        'lastMessage': lastMessage,
+        'lastMessageTimestamp': timestamp,
+        'lastMessageSenderId': currentUserId,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to update chat room metadata: $e');
+    }
+  }
+
+  // Create a unique chat room ID by sorting and joining the two user IDs
+  String _getChatRoomId(String userId1, String userId2) {
+    List<String> ids = [userId1, userId2];
+    ids.sort(); // Sort to ensure consistent chat room ID regardless of who initiates
+    return ids.join('_');
   }
 }

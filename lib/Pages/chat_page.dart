@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'image_button.dart';
 import 'video_button.dart'; // Import the VideoUploadButton
 import 'video_player.dart'; // Import the VideoPlayerPage
+import 'audio_button.dart'; // Import the AudioUploadButton
 
 class ChatPage extends StatefulWidget {
   final String receiverEmail;
@@ -69,6 +70,7 @@ class _ChatPageState extends State<ChatPage> {
         _messageController.text.trim(),
         isImage: false,
         isVideo: false,
+        isAudio: false,
       );
       _messageController.clear();
       _scrollToBottom();
@@ -82,6 +84,7 @@ class _ChatPageState extends State<ChatPage> {
         imageUrl,
         isImage: true,
         isVideo: false,
+        isAudio: false,
       );
       _scrollToBottom();
     } catch (e) {
@@ -99,12 +102,31 @@ class _ChatPageState extends State<ChatPage> {
         videoUrl,
         isImage: false,
         isVideo: true,
+        isAudio: false,
       );
       _scrollToBottom();
     } catch (e) {
       print('Error sending video message: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sending video: $e')),
+      );
+    }
+  }
+
+  void _sendAudioMessage(String audioUrl) async {
+    try {
+      await _chatServices.sendMessage(
+        widget.receiverID,
+        audioUrl,
+        isImage: false,
+        isVideo: false,
+        isAudio: true,
+      );
+      _scrollToBottom();
+    } catch (e) {
+      print('Error sending audio message: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending audio: $e')),
       );
     }
   }
@@ -206,6 +228,7 @@ class _ChatPageState extends State<ChatPage> {
                           messageData['senderId'] == _auth.currentUser!.uid;
                       var isImage = messageData['isImage'] ?? false;
                       var isVideo = messageData['isVideo'] ?? false;
+                      var isAudio = messageData['isAudio'] ?? false;
                       var message = messageData['message'] as String? ?? '';
 
                       return Padding(
@@ -218,6 +241,7 @@ class _ChatPageState extends State<ChatPage> {
                           children: [
                             if (!isSender) const SizedBox(width: 8),
                             if (isImage && message.isNotEmpty)
+                            // Image message
                               Container(
                                 constraints: BoxConstraints(
                                   maxWidth:
@@ -285,6 +309,7 @@ class _ChatPageState extends State<ChatPage> {
                                 ),
                               )
                             else if (isVideo && message.isNotEmpty)
+                            // Video message
                               GestureDetector(
                                 onTap: () {
                                   // Navigate to the VideoPlayerPage
@@ -352,52 +377,95 @@ class _ChatPageState extends State<ChatPage> {
                                   ),
                                 ),
                               )
-                            else
-                              Container(
-                                constraints: BoxConstraints(
-                                  maxWidth:
-                                  MediaQuery.of(context).size.width * 0.7,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: isSender
-                                      ? Theme.of(context).primaryColor
-                                      : const Color(0xFF2D2D2D),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      spreadRadius: 1,
-                                      blurRadius: 2,
-                                      offset: const Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      message,
-                                      style: TextStyle(
-                                        color: isSender
-                                            ? Colors.white
-                                            : Colors.white.withOpacity(0.87),
+                            else if (isAudio && message.isNotEmpty)
+                              // Audio message
+                                Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                    MediaQuery.of(context).size.width * 0.6,
+                                  ),
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: isSender
+                                        ? Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.3)
+                                        : const Color(0xFF2D2D2D),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      IconButton(
+                                        onPressed: () {
+                                          // Implement audio playback logic here
+                                        },
+                                        icon: const Icon(
+                                          Icons.play_circle_fill,
+                                          size: 50,
+                                          color: Colors.white70,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      timeString,
-                                      style: TextStyle(
-                                        color: isSender
-                                            ? Colors.white.withOpacity(0.6)
-                                            : Colors.white.withOpacity(0.4),
-                                        fontSize: 10,
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        timeString,
+                                        style: TextStyle(
+                                          color: isSender
+                                              ? Colors.white.withOpacity(0.6)
+                                              : Colors.white.withOpacity(0.4),
+                                          fontSize: 10,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                )
+                              else
+                              // Text message
+                                Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                    MediaQuery.of(context).size.width * 0.7,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: isSender
+                                        ? Theme.of(context).primaryColor
+                                        : const Color(0xFF2D2D2D),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        spreadRadius: 1,
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        message,
+                                        style: TextStyle(
+                                          color: isSender
+                                              ? Colors.white
+                                              : Colors.white.withOpacity(0.87),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        timeString,
+                                        style: TextStyle(
+                                          color: isSender
+                                              ? Colors.white.withOpacity(0.6)
+                                              : Colors.white.withOpacity(0.4),
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
                             if (isSender) const SizedBox(width: 8),
                           ],
                         ),
@@ -429,6 +497,8 @@ class _ChatPageState extends State<ChatPage> {
                 ImageUploadButton(onImageUploaded: _sendImageMessage),
                 const SizedBox(width: 8),
                 VideoUploadButton(onVideoUploaded: _sendVideoMessage),
+                const SizedBox(width: 8),
+                AudioUploadButton(onAudioUploaded: _sendAudioMessage), // Audio button
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
