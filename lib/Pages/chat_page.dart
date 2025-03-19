@@ -8,6 +8,7 @@ import 'image_button.dart';
 import 'video_button.dart'; // Import the VideoUploadButton
 import 'video_player.dart'; // Import the VideoPlayerPage
 import 'audio_button.dart'; // Import the AudioUploadButton
+import 'audio_player.dart'; // Import the AudioPlayerPage
 
 class ChatPage extends StatefulWidget {
   final String receiverEmail;
@@ -379,44 +380,63 @@ class _ChatPageState extends State<ChatPage> {
                               )
                             else if (isAudio && message.isNotEmpty)
                               // Audio message
-                                Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth:
-                                    MediaQuery.of(context).size.width * 0.6,
-                                  ),
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: isSender
-                                        ? Theme.of(context)
-                                        .primaryColor
-                                        .withOpacity(0.3)
-                                        : const Color(0xFF2D2D2D),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      IconButton(
-                                        onPressed: () {
-                                          // Implement audio playback logic here
-                                        },
-                                        icon: const Icon(
-                                          Icons.play_circle_fill,
-                                          size: 50,
-                                          color: Colors.white70,
-                                        ),
+                                GestureDetector(
+                                  onTap: () {
+                                    // Navigate to the AudioPlayerPage
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            AudioPlayerPage(audioUrl: message),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        timeString,
-                                        style: TextStyle(
-                                          color: isSender
-                                              ? Colors.white.withOpacity(0.6)
-                                              : Colors.white.withOpacity(0.4),
-                                          fontSize: 10,
+                                    );
+                                  },
+                                  child: Container(
+                                    constraints: BoxConstraints(
+                                      maxWidth:
+                                      MediaQuery.of(context).size.width * 0.6,
+                                    ),
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: isSender
+                                          ? Theme.of(context)
+                                          .primaryColor
+                                          .withOpacity(0.3)
+                                          : const Color(0xFF2D2D2D),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        IconButton(
+                                          onPressed: () {
+                                            // Navigate to the AudioPlayerPage
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    AudioPlayerPage(audioUrl: message),
+                                              ),
+                                            );
+                                          },
+                                          icon: const Icon(
+                                            Icons.play_circle_fill,
+                                            size: 50,
+                                            color: Colors.white70,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          timeString,
+                                          style: TextStyle(
+                                            color: isSender
+                                                ? Colors.white.withOpacity(0.6)
+                                                : Colors.white.withOpacity(0.4),
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 )
                               else

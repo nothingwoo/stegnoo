@@ -13,12 +13,11 @@ class AudioPlayerPage extends StatefulWidget {
 class _AudioPlayerPageState extends State<AudioPlayerPage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _playAudio();
   }
 
   Future<void> _playAudio() async {
@@ -27,36 +26,41 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
         _isLoading = true;
       });
 
-      // Use UrlSource to play audio from a URL
-      await _audioPlayer.play(UrlSource(widget.audioUrl));
+      int result = await _audioPlayer.play(widget.audioUrl);
 
-      setState(() {
-        _isPlaying = true;
-        _isLoading = false;
-      });
+      if (result == 1) { // Success
+        setState(() {
+          _isPlaying = true;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to play audio: $e')),
       );
       print('Error playing audio: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _pauseAudio() async {
-    await _audioPlayer.pause();
-    setState(() {
-      _isPlaying = false;
-    });
+    int result = await _audioPlayer.pause();
+    if (result == 1) { // Success
+      setState(() {
+        _isPlaying = false;
+      });
+    }
   }
 
   Future<void> _stopAudio() async {
-    await _audioPlayer.stop();
-    setState(() {
-      _isPlaying = false;
-    });
+    int result = await _audioPlayer.stop();
+    if (result == 1) { // Success
+      setState(() {
+        _isPlaying = false;
+      });
+    }
   }
 
   @override
@@ -81,8 +85,8 @@ class _AudioPlayerPageState extends State<AudioPlayerPage> {
               IconButton(
                 onPressed: _isPlaying ? _pauseAudio : _playAudio,
                 icon: Icon(
-                  _isPlaying ? Icons.pause : Icons.play_arrow,
-                  size: 50,
+                  _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+                  size: 70,
                   color: Colors.blue,
                 ),
               ),
