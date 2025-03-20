@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:final_app/services/chat/chat_services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'image_button.dart';
 import 'video_button.dart'; // Import the VideoUploadButton
 import 'video_player.dart'; // Import the VideoPlayerPage
 import 'audio_button.dart'; // Import the AudioUploadButton
@@ -30,6 +29,7 @@ class _ChatPageState extends State<ChatPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ScrollController _scrollController = ScrollController();
   String receiverUsername = "";
+  String receiverProfilePicUrl = ""; // Variable to store profile picture URL
 
   @override
   void initState() {
@@ -49,10 +49,12 @@ class _ChatPageState extends State<ChatPage> {
           receiverUsername =
               (userDoc.data() as Map<String, dynamic>)['username'] ??
                   widget.receiverEmail;
+          receiverProfilePicUrl =
+              (userDoc.data() as Map<String, dynamic>)['profilePicUrl'] ?? ""; // Fetch profile picture URL
         });
       }
     } catch (e) {
-      print("Error fetching username: $e");
+      print("Error fetching username or profile picture: $e");
       receiverUsername = widget.receiverEmail;
     }
   }
@@ -69,7 +71,6 @@ class _ChatPageState extends State<ChatPage> {
       await _chatServices.sendMessage(
         widget.receiverID,
         _messageController.text.trim(),
-        isImage: false,
         isVideo: false,
         isAudio: false,
       );
@@ -78,30 +79,11 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void _sendImageMessage(String imageUrl) async {
-    try {
-      await _chatServices.sendMessage(
-        widget.receiverID,
-        imageUrl,
-        isImage: true,
-        isVideo: false,
-        isAudio: false,
-      );
-      _scrollToBottom();
-    } catch (e) {
-      print('Error sending image message: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending image: $e')),
-      );
-    }
-  }
-
   void _sendVideoMessage(String videoUrl) async {
     try {
       await _chatServices.sendMessage(
         widget.receiverID,
         videoUrl,
-        isImage: false,
         isVideo: true,
         isAudio: false,
       );
@@ -119,7 +101,6 @@ class _ChatPageState extends State<ChatPage> {
       await _chatServices.sendMessage(
         widget.receiverID,
         audioUrl,
-        isImage: false,
         isVideo: false,
         isAudio: true,
       );
@@ -150,36 +131,56 @@ class _ChatPageState extends State<ChatPage> {
       backgroundColor: const Color(0xFF1A1A1A),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2D2D2D),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              receiverUsername,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.white,
-              ),
+            // CircleAvatar for profile picture
+            CircleAvatar(
+              backgroundColor: Colors.green, // Use your desired background color
+              radius: 20, // Adjust the radius as needed
+              backgroundImage: receiverProfilePicUrl.isNotEmpty
+                  ? NetworkImage(receiverProfilePicUrl) // Use the profile picture URL if available
+                  : null, // Set backgroundImage to null when no profile picture is available
+              child: receiverProfilePicUrl.isEmpty
+                  ? const Icon(
+                      Icons.person, // Use the person icon from Flutter's built-in icons
+                      size: 20, // Adjust the size of the icon as needed
+                      color: Colors.white, // Set the color of the icon
+                    )
+                  : null, // Show the icon if no profile picture is available
             ),
-            StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(widget.receiverID)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data!.exists) {
-                  bool isOnline = (snapshot.data!.data()
-                  as Map<String, dynamic>)['isOnline'] ??
-                      false;
-                  return Text(
-                    isOnline ? 'Active now' : 'Offline',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isOnline ? Colors.green[400] : Colors.grey[500],
-                    ),
-                  );
-                }
-                return Container();
-              },
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  receiverUsername,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                ),
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(widget.receiverID)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      bool isOnline = (snapshot.data!.data()
+                      as Map<String, dynamic>)['isOnline'] ??
+                          false;
+                      return Text(
+                        isOnline ? 'Active now' : 'Offline',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isOnline ? Colors.green[400] : Colors.grey[500],
+                        ),
+                      );
+                    }
+                    return Container();
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -227,7 +228,6 @@ class _ChatPageState extends State<ChatPage> {
                           : '';
                       var isSender =
                           messageData['senderId'] == _auth.currentUser!.uid;
-                      var isImage = messageData['isImage'] ?? false;
                       var isVideo = messageData['isVideo'] ?? false;
                       var isAudio = messageData['isAudio'] ?? false;
                       var message = messageData['message'] as String? ?? '';
@@ -241,75 +241,7 @@ class _ChatPageState extends State<ChatPage> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             if (!isSender) const SizedBox(width: 8),
-                            if (isImage && message.isNotEmpty)
-                            // Image message
-                              Container(
-                                constraints: BoxConstraints(
-                                  maxWidth:
-                                  MediaQuery.of(context).size.width * 0.6,
-                                ),
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: isSender
-                                      ? Theme.of(context)
-                                      .primaryColor
-                                      .withOpacity(0.3)
-                                      : const Color(0xFF2D2D2D),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(
-                                        message,
-                                        loadingBuilder: (BuildContext context,
-                                            Widget child,
-                                            ImageChunkEvent? loadingProgress) {
-                                          if (loadingProgress == null)
-                                            return child;
-                                          return Center(
-                                            child: CircularProgressIndicator(
-                                              value: loadingProgress
-                                                  .expectedTotalBytes !=
-                                                  null
-                                                  ? loadingProgress
-                                                  .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                                  : null,
-                                            ),
-                                          );
-                                        },
-                                        errorBuilder: (BuildContext context,
-                                            Object error,
-                                            StackTrace? stackTrace) {
-                                          print("Image error: $error");
-                                          return Container(
-                                            padding: const EdgeInsets.all(8),
-                                            child: const Text(
-                                                'Failed to load image',
-                                                style: TextStyle(
-                                                    color: Colors.red)),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      timeString,
-                                      style: TextStyle(
-                                        color: isSender
-                                            ? Colors.white.withOpacity(0.6)
-                                            : Colors.white.withOpacity(0.4),
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            else if (isVideo && message.isNotEmpty)
+                            if (isVideo && message.isNotEmpty)
                             // Video message
                               GestureDetector(
                                 onTap: () {
@@ -379,98 +311,50 @@ class _ChatPageState extends State<ChatPage> {
                                 ),
                               )
                             else if (isAudio && message.isNotEmpty)
-                              // Audio message
-                                GestureDetector(
-                                  onTap: () {
-                                    // Navigate to the AudioPlayerPage
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            AudioPlayerPage(audioUrl: message),
-                                      ),
-                                    );
-                                  },
-                                  child: Container(
-                                    constraints: BoxConstraints(
-                                      maxWidth:
-                                      MediaQuery.of(context).size.width * 0.6,
+                            // Audio message
+                              GestureDetector(
+                                onTap: () {
+                                  // Navigate to the AudioPlayerPage
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          AudioPlayerPage(audioUrl: message),
                                     ),
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: isSender
-                                          ? Theme.of(context)
-                                          .primaryColor
-                                          .withOpacity(0.3)
-                                          : const Color(0xFF2D2D2D),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        IconButton(
-                                          onPressed: () {
-                                            // Navigate to the AudioPlayerPage
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    AudioPlayerPage(audioUrl: message),
-                                              ),
-                                            );
-                                          },
-                                          icon: const Icon(
-                                            Icons.play_circle_fill,
-                                            size: 50,
-                                            color: Colors.white70,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          timeString,
-                                          style: TextStyle(
-                                            color: isSender
-                                                ? Colors.white.withOpacity(0.6)
-                                                : Colors.white.withOpacity(0.4),
-                                            fontSize: 10,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                              else
-                              // Text message
-                                Container(
+                                  );
+                                },
+                                child: Container(
                                   constraints: BoxConstraints(
                                     maxWidth:
-                                    MediaQuery.of(context).size.width * 0.7,
+                                    MediaQuery.of(context).size.width * 0.6,
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 10),
+                                  padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
                                     color: isSender
-                                        ? Theme.of(context).primaryColor
+                                        ? Theme.of(context)
+                                        .primaryColor
+                                        .withOpacity(0.3)
                                         : const Color(0xFF2D2D2D),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        spreadRadius: 1,
-                                        blurRadius: 2,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Text(
-                                        message,
-                                        style: TextStyle(
-                                          color: isSender
-                                              ? Colors.white
-                                              : Colors.white.withOpacity(0.87),
+                                      IconButton(
+                                        onPressed: () {
+                                          // Navigate to the AudioPlayerPage
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  AudioPlayerPage(audioUrl: message),
+                                            ),
+                                          );
+                                        },
+                                        icon: const Icon(
+                                          Icons.play_circle_fill,
+                                          size: 50,
+                                          color: Colors.white70,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
@@ -486,6 +370,54 @@ class _ChatPageState extends State<ChatPage> {
                                     ],
                                   ),
                                 ),
+                              )
+                            else
+                            // Text message
+                              Container(
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                  MediaQuery.of(context).size.width * 0.7,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isSender
+                                      ? Theme.of(context).primaryColor
+                                      : const Color(0xFF2D2D2D),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      spreadRadius: 1,
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message,
+                                      style: TextStyle(
+                                        color: isSender
+                                            ? Colors.white
+                                            : Colors.white.withOpacity(0.87),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      timeString,
+                                      style: TextStyle(
+                                        color: isSender
+                                            ? Colors.white.withOpacity(0.6)
+                                            : Colors.white.withOpacity(0.4),
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             if (isSender) const SizedBox(width: 8),
                           ],
                         ),
@@ -514,8 +446,6 @@ class _ChatPageState extends State<ChatPage> {
             ),
             child: Row(
               children: [
-                ImageUploadButton(onImageUploaded: _sendImageMessage),
-                const SizedBox(width: 8),
                 VideoUploadButton(onVideoUploaded: _sendVideoMessage),
                 const SizedBox(width: 8),
                 AudioUploadButton(onAudioUploaded: _sendAudioMessage), // Audio button

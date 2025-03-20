@@ -24,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
       );
       // Show success message on successful sign-in
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login successful!')),
+        const SnackBar(content: Text('Login successful!')),
       );
       // Navigate to the home screen or other page after successful login
     } on Exception catch (e) {
@@ -38,7 +38,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF121212), // Dark background similar to WhatsApp's dark mode
+      backgroundColor: const Color(0xFF121212), // Dark background similar to WhatsApp's dark mode
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -46,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Logo
-            Icon(
+            const Icon(
               Icons.message,
               size: 100,
               color: Colors.white, // Light icon color for contrast
@@ -54,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
             const SizedBox(height: 30),
 
             // Welcome message
-            Text(
+            const Text(
               "Welcome Back!",
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -64,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             const SizedBox(height: 10),
-            Text(
+            const Text(
               "Please log in to continue.",
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -79,19 +79,23 @@ class _LoginPageState extends State<LoginPage> {
               controller: _emailController,
               decoration: InputDecoration(
                 labelText: "Email",
-                labelStyle: TextStyle(color: Colors.white70), // Lighter text color for labels
+                labelStyle: const TextStyle(color: Colors.white70), // Lighter text color for labels
                 filled: true,
-                fillColor: Color(0xFF2C2F34), // Dark background for input fields
+                fillColor: const Color(0xFF2C2F34), // Dark background for input fields
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.white30),
+                  borderSide: const BorderSide(color: Colors.white30),
                 ),
-                prefixIcon: Icon(Icons.email, color: Colors.white70),
+                prefixIcon: const Icon(Icons.email, color: Colors.white70),
               ),
               keyboardType: TextInputType.emailAddress,
-              style: TextStyle(color: Colors.white), // White text inside input fields
+              style: const TextStyle(color: Colors.white), // White text inside input fields
+              onSubmitted: (value) {
+                // Call the _signIn function when Enter is pressed
+                _signIn();
+              },
             ),
-            const SizedBox(height: 20),  
+            const SizedBox(height: 20),
 
             // Password text field
             TextField(
@@ -105,10 +109,14 @@ class _LoginPageState extends State<LoginPage> {
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(color: Colors.white30),
                 ),
-                prefixIcon:const  Icon(Icons.lock, color: Colors.white70),
+                prefixIcon: const Icon(Icons.lock, color: Colors.white70),
               ),
               obscureText: true,
               style: const TextStyle(color: Colors.white), // White text inside input fields
+              onSubmitted: (value) {
+                // Call the _signIn function when Enter is pressed
+                _signIn();
+              },
             ),
             const SizedBox(height: 30),
 
@@ -117,7 +125,7 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: _signIn,
               child: const Text("Log In"),
               style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Color(0xFF25D366), padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: Colors.white, backgroundColor: const Color(0xFF25D366), padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
@@ -127,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
+                const Text(
                   "Don't have an account?",
                   style: TextStyle(
                     color: Colors.white70,

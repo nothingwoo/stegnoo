@@ -1,3 +1,6 @@
+// ignore_for_file: unused_field
+
+import 'dart:async';
 import 'package:final_app/Pages/chat_page.dart';
 import 'package:final_app/components/my_drawer.dart';
 import 'package:final_app/services/auth/auth_service.dart';
@@ -5,18 +8,89 @@ import 'package:final_app/services/chat/chat_services.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// WhatsApp color constants
 const Color kWhatsAppGreen = Color(0xFF075E54);
 const Color kWhatsAppLightGreen = Color(0xFF128C7E);
 const Color kDarkBackground = Color(0xFF121B22);
 const Color kDarkCardColor = Color(0xFF1F2C34);
 const Color kOnlineGreen = Color(0xFF25D366);
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   HomePage({super.key});
 
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final ChatServices _chatServices = ChatServices();
   final AuthService _authService = AuthService();
+  bool _isSearching = false;
+  String _searchQuery = "";
+  
+  // Key for forcing a rebuild of the StreamBuilder
+  GlobalKey _streamKey = GlobalKey();
+  
+  // Used to store current user ID
+  String _currentUserId = '';
+  
+  @override
+  void initState() {
+    super.initState();
+    _currentUserId = _authService.getCurrentUser()!.uid;
+    
+    // Add observer to detect when app comes back to foreground
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Listen for chat updates to refresh user list
+    _chatServices.listenForChatUpdates(_currentUserId, () {
+      _refreshUserList();
+    });
+  }
+  
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh when app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      setState(() {
+        // This will trigger a refresh
+        _streamKey = GlobalKey();
+      });
+    }
+  }
+
+  void _startSearch() {
+    setState(() {
+      _isSearching = true;
+    });
+  }
+
+  void _stopSearch() {
+    setState(() {
+      _isSearching = false;
+      _searchQuery = "";
+    });
+  }
+
+  void _updateSearchQuery(String newQuery) {
+    setState(() {
+      _searchQuery = newQuery;
+    });
+  }
+  
+  // Force refresh the user list
+  void _refreshUserList() {
+    setState(() {
+      // Using a new key forces the StreamBuilder to rebuild
+      // which will fetch fresh data
+      _streamKey = GlobalKey();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,17 +108,38 @@ class HomePage extends StatelessWidget {
       ),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'STEGNO',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          title: _isSearching
+              ? TextField(
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Search...',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                    border: InputBorder.none,
+                  ),
+                  style: TextStyle(color: Colors.white),
+                  onChanged: _updateSearchQuery,
+                )
+              : const Text(
+                  'STEGNO',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
           actions: [
+            if (_isSearching)
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _stopSearch,
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: _startSearch,
+              ),
             IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {},
+              icon: const Icon(Icons.refresh),
+              onPressed: _refreshUserList,
             ),
             IconButton(
               icon: const Icon(Icons.more_vert),
@@ -67,12 +162,19 @@ class HomePage extends StatelessWidget {
 
   Widget _buildUserList() {
     return StreamBuilder<QuerySnapshot>(
+      key: _streamKey,
       stream: _chatServices.getUsersStream(),
       builder: (context, snapshot) {
+        // Debug print statement to see what's coming from Firestore
+        print("Stream data status: ${snapshot.connectionState}, hasData: ${snapshot.hasData}, error: ${snapshot.error}");
+        if (snapshot.hasData) {
+          print("Number of docs: ${snapshot.data!.docs.length}");
+        }
+        
         if (snapshot.hasError) {
           return Center(
             child: Text(
-              "Error occurred while loading users.",
+              "Error occurred while loading users: ${snapshot.error}",
               style: TextStyle(color: Colors.grey[400]),
             ),
           );
@@ -109,114 +211,351 @@ class HomePage extends StatelessWidget {
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(top: 8),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            DocumentSnapshot userData = snapshot.data!.docs[index];
-            return _buildUserListItem(userData, context);
+        List<DocumentSnapshot> users = snapshot.data!.docs;
+        String currentUserEmail = _authService.getCurrentUser()!.email!;
+
+        // Filter out current user
+        users = users.where((user) {
+          Map<String, dynamic> userData = user.data() as Map<String, dynamic>;
+          return userData["email"] != currentUserEmail;
+        }).toList();
+        
+        // Debug print for filtered users
+        print("Filtered users count after removing current user: ${users.length}");
+
+        // Filter users based on search query
+        if (_searchQuery.isNotEmpty) {
+          users = users.where((user) {
+            Map<String, dynamic> userData = user.data() as Map<String, dynamic>;
+            String username = userData["username"] ?? userData["email"].toString().split('@')[0];
+            return username.toLowerCase().contains(_searchQuery.toLowerCase());
+          }).toList();
+          print("Filtered users count after search: ${users.length}");
+        }
+
+        // If no users found after filtering
+        if (users.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.search_off,
+                  size: 80,
+                  color: Colors.grey[600],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _searchQuery.isNotEmpty 
+                    ? "No users found matching '$_searchQuery'"
+                    : "No conversations yet",
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _processUsers(users),
+          builder: (context, processedSnapshot) {
+            if (processedSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: kWhatsAppLightGreen,
+                ),
+              );
+            }
+            
+            if (processedSnapshot.hasError) {
+              print("Error processing users: ${processedSnapshot.error}");
+              return Center(
+                child: Text(
+                  "Error processing users",
+                  style: TextStyle(color: Colors.grey[400]),
+                ),
+              );
+            }
+
+            if (!processedSnapshot.hasData || processedSnapshot.data!.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.people_outline,
+                      size: 80,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "No conversations yet",
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            List<Map<String, dynamic>> processedUsers = processedSnapshot.data!;
+            print("Processed users count: ${processedUsers.length}");
+
+            return ListView.builder(
+              padding: const EdgeInsets.only(top: 8),
+
+              itemCount: processedUsers.length,
+              itemBuilder: (context, index) {
+                return _buildUserListItemFromProcessed(processedUsers[index], context);
+              },
+            );
           },
         );
       },
     );
   }
 
-  Widget _buildUserListItem(DocumentSnapshot userData, BuildContext context) {
-    Map<String, dynamic> user = userData.data() as Map<String, dynamic>;
-    
-    if (user["email"] != _authService.getCurrentUser()!.email) {
-      String displayName = user["username"] ?? user["email"].toString().split('@')[0];
+  Future<List<Map<String, dynamic>>> _processUsers(List<DocumentSnapshot> users) async {
+    List<Map<String, dynamic>> processedUsers = [];
+    String currentUserId = _authService.getCurrentUser()!.uid;
+
+    for (var userDoc in users) {
+      try {
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+        String userId = userData["uid"];
+
+        // Get messages for this user
+        QuerySnapshot messagesSnapshot = await _chatServices.getMessages(
+          userId, currentUserId
+        ).first;
+
+        List<QueryDocumentSnapshot> messages = messagesSnapshot.docs;
+        
+        bool hasMessages = messages.isNotEmpty;
+
+        // Filter out messages sent by the current user when calculating unread count
+        int unreadCount = messages.where((msg) {
+          Map<String, dynamic> messageData = msg.data() as Map<String, dynamic>;
+          return !messageData['isRead'] && messageData['senderId'] != currentUserId;
+        }).length;
+
+        // Get the last message (regardless of sender)
+        String lastMessage = "No messages yet";
+        Timestamp lastMessageTime = Timestamp.fromDate(DateTime(2000));
+        
+        if (hasMessages) {
+          // Sort messages by timestamp (newest last)
+          messages.sort((a, b) {
+            Timestamp aTime = (a.data() as Map<String, dynamic>)['timestamp'] as Timestamp;
+            Timestamp bTime = (b.data() as Map<String, dynamic>)['timestamp'] as Timestamp;
+            return aTime.compareTo(bTime);
+          });
+          
+          lastMessage = (messages.last.data() as Map<String, dynamic>)['message'];
+          lastMessageTime = (messages.last.data() as Map<String, dynamic>)['timestamp'];
+        }
+
+        // Add processed user data with message info
+        processedUsers.add({
+          'userData': userData,
+          'hasMessages': hasMessages,
+          'unreadCount': unreadCount,
+          'lastMessage': lastMessage,
+          'lastMessageTime': lastMessageTime,
+        });
+      } catch (e) {
+        print("Error processing user ${userDoc.id}: $e");
+        // Skip this user if there's an error processing it
+        continue;
+      }
+    }
+
+    // Modified sorting logic - Sort users by last message time (newest first)
+    processedUsers.sort((a, b) {
+      // If both have messages, sort by timestamp (newest first)
+      if (a['hasMessages'] && b['hasMessages']) {
+        return b['lastMessageTime'].compareTo(a['lastMessageTime']);
+      }
+      // Otherwise, prioritize those with messages
+      if (a['hasMessages']) return -1;
+      if (b['hasMessages']) return 1;
       
-      return Column(
-        children: [
-          InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatPage(
-                    receiverEmail: user["email"],
-                    receiverID: user["uid"],
-                  ),
+      // If neither has messages, keep original order
+      return 0;
+    });
+
+    return processedUsers;
+  }
+
+  Widget _buildUserListItemFromProcessed(Map<String, dynamic> processedData, BuildContext context) {
+    Map<String, dynamic> user = processedData['userData'];
+    String displayName = user["username"] ?? user["email"].toString().split('@')[0];
+    String userId = user["uid"];
+    bool hasMessages = processedData['hasMessages'];
+    bool hasUnread = processedData['unreadCount'] > 0;
+    int unreadCount = processedData['unreadCount'];
+    String lastMessage = processedData['lastMessage'];
+    Timestamp lastMessageTime = processedData['lastMessageTime'];
+
+   // Format timestamp
+    String timeString = "";
+    if (hasMessages) {
+      DateTime messageDateTime = lastMessageTime.toDate();
+      DateTime now = DateTime.now();
+      bool isToday = messageDateTime.year == now.year && 
+                      messageDateTime.month == now.month && 
+                      messageDateTime.day == now.day;
+
+      if (isToday) {
+        // Format as 12-hour time with AM/PM for today's messages
+        int hour = messageDateTime.hour > 12 ? messageDateTime.hour - 12 : messageDateTime.hour;
+        // Handle midnight (0 hour) case
+        if (hour == 0) hour = 12;
+        String period = messageDateTime.hour >= 12 ? "PM" : "AM";
+        timeString = "${hour.toString()}:${messageDateTime.minute.toString().padLeft(2, '0')} $period";
+      } else {
+        // Format as date for older messages
+        timeString = "${messageDateTime.day}/${messageDateTime.month}/${messageDateTime.year}";
+      }
+    }
+
+    return Column(
+      children: [
+        InkWell(
+          onTap: () async {
+            // Mark all unread messages from this user as read before navigating
+            await _markAllMessagesAsRead(userId);
+
+            // Navigate to chat page and wait for it to complete
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatPage(
+                  receiverEmail: user["email"],
+                  receiverID: userId,
                 ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: Colors.transparent,
-              child: Row(
-                children: [
-                  // Avatar
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: kWhatsAppLightGreen,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        displayName[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  
-                  // User Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          displayName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: user["isOnline"] == true ? kOnlineGreen : Colors.grey,
-                                shape: BoxShape.circle,
+              ),
+            );
+            
+            // Explicitly refresh the user list when returning from chat
+            _refreshUserList();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Colors.transparent,
+            child: Row(
+              children: [
+              CircleAvatar(
+  backgroundColor: kWhatsAppLightGreen,
+  radius: 25,
+  backgroundImage: user["profilePicUrl"] != null && user["profilePicUrl"].isNotEmpty
+      ? NetworkImage(user["profilePicUrl"]) // Use the profile picture URL if available
+      : null, // Set backgroundImage to null when no profile picture is available
+  child: user["profilePicUrl"] == null || user["profilePicUrl"].isEmpty
+      ? Icon(
+          Icons.person, // Use the person icon from Flutter's built-in icons
+          size: 30, // Adjust the size of the icon as needed
+          color: Colors.white, // Set the color of the icon
+        )
+      : null, // Show the icon if no profile picture is available
+),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                displayName,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
+                              if (user["isOnline"] == true)
+                                const SizedBox(width: 8),
+                              if (user["isOnline"] == true)
+                                Icon(Icons.circle, size: 10, color: kOnlineGreen),
+                            ],
+                          ),
+                          if (hasMessages)
                             Text(
-                              user["isOnline"] == true ? "online" : "offline",
+                              timeString,
                               style: TextStyle(
                                 color: Colors.grey[500],
-                                fontSize: 13,
+                                fontSize: 12,
                               ),
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              lastMessage,
+                              style: TextStyle(
+                                color: hasUnread ? Colors.white : Colors.grey[500],
+                                fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (hasUnread)
+                            CircleAvatar(
+                              backgroundColor: kOnlineGreen,
+                              radius: 10,
+                              child: Text(
+                                '$unreadCount',
+                                style: const TextStyle(fontSize: 12, color: Colors.white),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          Divider(
-            color: Colors.grey[900],
-            height: 1,
-            indent: 82,
-          ),
-        ],
-      );
-    } else {
-      return Container();
+        ),
+        Divider(color: Colors.grey[900], height: 1, indent: 82),
+      ],
+    );
+  }
+  
+  // New method to mark all messages from a specific user as read
+  Future<void> _markAllMessagesAsRead(String senderId) async {
+    try {
+      String currentUserId = _authService.getCurrentUser()!.uid;
+      
+      // Get all unread messages from this sender
+      QuerySnapshot messagesSnapshot = await _chatServices.getMessages(senderId, currentUserId).first;
+      
+      // Get unread messages not sent by current user
+      List<QueryDocumentSnapshot> unreadMessages = messagesSnapshot.docs.where((msg) {
+        Map<String, dynamic> messageData = msg.data() as Map<String, dynamic>;
+        return !messageData['isRead'] && messageData['senderId'] == senderId;
+      }).toList();
+      
+      // Mark each message as read
+      for (var msg in unreadMessages) {
+        await _chatServices.markMessageAsRead(msg.id, senderId);
+      }
+    } catch (e) {
+      print("Error marking messages as read: $e");
     }
   }
 }
