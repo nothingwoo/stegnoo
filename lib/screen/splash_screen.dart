@@ -6,7 +6,8 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -22,32 +23,20 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
 
     // Navigate to login page after splash
-    Timer(Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/login'); // Change '/login' to your actual login route
+    Timer(Duration(seconds: 4), () {
+      Navigator.pushReplacementNamed(context, '/login'); 
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Fixed black background
+      backgroundColor: Colors.black, 
       body: Center(
         child: FadeTransition(
           opacity: _animation,
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.message_rounded, size: 100, color: Colors.white), // Replace with your logo
-              SizedBox(height: 10),
-              Text(
-                "Stego",
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+          child: Image.asset(
+            'assets/images/image.png', // Ensure this path is correct!
           ),
         ),
       ),

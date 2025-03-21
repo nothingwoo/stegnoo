@@ -194,144 +194,159 @@ class _SettingsPageState extends State<SettingsPage> {
         title: const Text('Settings', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: themeProvider.isDarkMode ? Colors.black : Colors.blueAccent,
+        backgroundColor: Color(0xFF1F1A24), // Matching the dark theme
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          // Profile Section
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Colors.grey[300],
-                        backgroundImage: _profileImageUrl != null
-                            ? NetworkImage(_profileImageUrl!)
-                            : null,
-                        child: _profileImageUrl == null
-                            ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                            : null,
-                      ),
-                      if (_isUploading)
-                        const CircularProgressIndicator(color: Colors.white),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: IconButton(
-                          icon: const Icon(Icons.camera_alt, color: Colors.white),
-                          onPressed: _isUploading ? null : _pickImage,
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.blueAccent,
-                            padding: const EdgeInsets.all(8),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0F0028), // Even darker, more intense purple
+              Color(0xFF330066), // Deeper, saturated violet
+              Colors.black87, // Slightly transparent black for depth
+            ],
+            stops: [0.0, 0.6, 1.0],
+          ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            // Profile Section
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              color: Color(0xFF1F1A24), // Matching the dark theme
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.grey[300],
+                          backgroundImage: _profileImageUrl != null
+                              ? NetworkImage(_profileImageUrl!)
+                              : null,
+                          child: _profileImageUrl == null
+                              ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                              : null,
+                        ),
+                        if (_isUploading)
+                          const CircularProgressIndicator(color: Colors.white),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: IconButton(
+                            icon: const Icon(Icons.camera_alt, color: Colors.white),
+                            onPressed: _isUploading ? null : _pickImage,
+                            style: IconButton.styleFrom(
+                              backgroundColor: Color(0xFF330066), // Matching the deeper violet
+                              padding: const EdgeInsets.all(8),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Profile Picture',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: themeProvider.isDarkMode ? Colors.white : Colors.black,
+                      ],
                     ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Profile Picture',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Settings Options
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              color: Color(0xFF1F1A24), // Matching the dark theme
+              child: Column(
+                children: [
+                  // Dark Mode
+                  ListTile(
+                    visualDensity: VisualDensity.compact, // Compact mode
+                    leading: Icon(Icons.dark_mode, color: Colors.white),
+                    title: Text(
+                      'Dark Mode',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                    trailing: Switch(
+                      value: themeProvider.isDarkMode,
+                      onChanged: (value) {
+                        themeProvider.toggleTheme();
+                      },
+                    ),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+
+                  // Don't Disturb
+                  ListTile(
+                    visualDensity: VisualDensity.compact, // Compact mode
+                    leading: Icon(Icons.notifications_off, color: Colors.white),
+                    title: Text(
+                      'Don\'t Disturb',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                    trailing: Switch(
+                      value: _isDNDEnabled,
+                      onChanged: (value) async {
+                        setState(() {
+                          _isDNDEnabled = value;
+                        });
+                        await _saveDNDPreference(value);
+                      },
+                    ),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+
+                  // Account
+                  ListTile(
+                    visualDensity: VisualDensity.compact, // Compact mode
+                    leading: Icon(Icons.account_circle, color: Colors.white),
+                    title: Text(
+                      'Account',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.white),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AccountPage()),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-
-          // Settings Options
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                // Dark Mode
-                ListTile(
-                  visualDensity: VisualDensity.compact, // Compact mode
-                  leading: Icon(Icons.dark_mode, color: themeProvider.isDarkMode ? Colors.white : Colors.black87),
-                  title: Text(
-                    'Dark Mode',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: themeProvider.isDarkMode ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                  trailing: Switch(
-                    value: themeProvider.isDarkMode,
-                    onChanged: (value) {
-                      themeProvider.toggleTheme();
-                    },
-                  ),
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-
-                // Don't Disturb
-                ListTile(
-                  visualDensity: VisualDensity.compact, // Compact mode
-                  leading: Icon(Icons.notifications_off, color: themeProvider.isDarkMode ? Colors.white : Colors.black87),
-                  title: Text(
-                    'Don\'t Disturb',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: themeProvider.isDarkMode ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                  trailing: Switch(
-                    value: _isDNDEnabled,
-                    onChanged: (value) async {
-                      setState(() {
-                        _isDNDEnabled = value;
-                      });
-                      await _saveDNDPreference(value);
-                    },
-                  ),
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-
-                // Account
-                ListTile(
-                  visualDensity: VisualDensity.compact, // Compact mode
-                  leading: Icon(Icons.account_circle, color: themeProvider.isDarkMode ? Colors.white : Colors.black87),
-                  title: Text(
-                    'Account',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: themeProvider.isDarkMode ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 18),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AccountPage()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-      backgroundColor: themeProvider.isDarkMode ? Colors.grey[900] : Colors.grey[200],
     );
   }
 }

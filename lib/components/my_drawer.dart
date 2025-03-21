@@ -20,15 +20,27 @@ void logout(){
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Drawer Header
-          DrawerHeader(
-            child: Center(
-              child: Icon(
-                Icons.message,
-                color: Theme.of(context).colorScheme.primary,
-                size: 50, // Reduced size
-              ),
-            ),
-          ),
+          // Drawer Header with Image
+DrawerHeader(
+  decoration: BoxDecoration(
+    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+  ),
+  child: Center(
+    // Replace the chat icon with an image
+    child: CircleAvatar(
+      radius: 40, // Adjust the size of the image
+      backgroundImage: const AssetImage('assets/images/image.png'), // Replace with your image path
+      child: ClipOval(
+        child: Image.asset(
+          'assets/images/image.png', // Replace with your image path
+          fit: BoxFit.cover,
+          width: 80, // Adjust the width
+          height: 80, // Adjust the height
+        ),
+      ),
+    ),
+  ),
+),
 
           // Home List Tile
           Padding(

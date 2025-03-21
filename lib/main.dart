@@ -119,73 +119,58 @@
   }
 
   // ✅ SplashScreen (Web & Android)
-  class SplashScreen extends StatefulWidget {
-    const SplashScreen({Key? key}) : super(key: key);
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({Key? key}) : super(key: key);
 
-    @override
-    _SplashScreenState createState() => _SplashScreenState();
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..forward();
+
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+
+    // Navigate to AuthGate after splash
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (context) => const AuthGate()));
+      }
+    });
   }
 
-  class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-    late AnimationController _controller;
-    late Animation<double> _animation;
-
-    @override
-    void initState() {
-      super.initState();
-
-      _controller = AnimationController(
-        vsync: this,
-        duration: const Duration(seconds: 2),
-      )..forward();
-
-      _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-
-      // Navigate to AuthGate after splash
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AuthGate()));
-        }
-      });
-    }
-
-    @override
-    Widget build(BuildContext context) {
-      return Scaffold(
-        backgroundColor: Colors.black, // Fixed black background
-        body: Center(
-          child: FadeTransition(
-            opacity: _animation,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.chat_bubble,
-                  size: 100,
-                  color: Colors.white, // Fixed white icon color
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  "Stego",
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green, // Fixed green text color
-                  ),
-                ),
-              ],
-            ),
-          ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black, // Fixed black background
+      body: Center(
+        child: FadeTransition(
+          opacity: _animation,
+          child: Image.asset('assets/images/image.png'), // Replace Icon and Text with Image
         ),
-      );
-    }
-
-    @override
-    void dispose() {
-      _controller.dispose();
-      super.dispose();
-    }
+      ),
+    );
   }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
 
   // ✅ MyApp
   class MyApp extends StatelessWidget {

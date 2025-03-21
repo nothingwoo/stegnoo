@@ -8,11 +8,9 @@ import 'package:final_app/services/chat/chat_services.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-const Color kWhatsAppGreen = Color(0xFF075E54);
-const Color kWhatsAppLightGreen = Color(0xFF128C7E);
-const Color kDarkBackground = Color(0xFF121B22);
-const Color kDarkCardColor = Color(0xFF1F2C34);
-const Color kOnlineGreen = Color(0xFF25D366);
+const Color kDarkBackground = Color(0xFF0F0028); // Dark purple background
+const Color kDarkCardColor = Color(0xFF330066); // Deeper violet for cards
+const Color kOnlineGreen = Color(0xFF25D366); // Online status green
 
 class HomePage extends StatefulWidget {
   HomePage({super.key});
@@ -26,33 +24,33 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final AuthService _authService = AuthService();
   bool _isSearching = false;
   String _searchQuery = "";
-  
+
   // Key for forcing a rebuild of the StreamBuilder
   GlobalKey _streamKey = GlobalKey();
-  
+
   // Used to store current user ID
   String _currentUserId = '';
-  
+
   @override
   void initState() {
     super.initState();
     _currentUserId = _authService.getCurrentUser()!.uid;
-    
+
     // Add observer to detect when app comes back to foreground
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Listen for chat updates to refresh user list
     _chatServices.listenForChatUpdates(_currentUserId, () {
       _refreshUserList();
     });
   }
-  
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
-  
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Refresh when app comes back to foreground
@@ -82,7 +80,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _searchQuery = newQuery;
     });
   }
-  
+
   // Force refresh the user list
   void _refreshUserList() {
     setState(() {
@@ -97,13 +95,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     return Theme(
       data: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: kDarkBackground,
-        primaryColor: kWhatsAppGreen,
+        primaryColor: kDarkCardColor,
         appBarTheme: const AppBarTheme(
           backgroundColor: kDarkCardColor,
           elevation: 0,
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: kWhatsAppLightGreen,
+          backgroundColor: kDarkCardColor,
         ),
       ),
       child: Scaffold(
@@ -120,35 +118,50 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   onChanged: _updateSearchQuery,
                 )
               : const Text(
-                  'STEGNO',
+                  'STEGO',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
                 ),
           actions: [
             if (_isSearching)
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Icons.close, color: Colors.white),
                 onPressed: _stopSearch,
               )
             else
               IconButton(
-                icon: const Icon(Icons.search),
+                icon: const Icon(Icons.search, color: Colors.white),
                 onPressed: _startSearch,
               ),
             IconButton(
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh, color: Colors.white),
               onPressed: _refreshUserList,
             ),
             IconButton(
-              icon: const Icon(Icons.more_vert),
+              icon: const Icon(Icons.more_vert, color: Colors.white),
               onPressed: () {},
             ),
           ],
         ),
         drawer: const MyDrawer(),
-        body: _buildUserList(),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF0F0028), // Even darker, more intense purple
+                Color(0xFF330066), // Deeper, saturated violet
+                Colors.black87, // Slightly transparent black for depth
+              ],
+              stops: [0.0, 0.6, 1.0],
+            ),
+          ),
+          child: _buildUserList(),
+        ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {},
           child: const Icon(
@@ -170,7 +183,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         if (snapshot.hasData) {
           print("Number of docs: ${snapshot.data!.docs.length}");
         }
-        
+
         if (snapshot.hasError) {
           return Center(
             child: Text(
@@ -183,7 +196,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
-              color: kWhatsAppLightGreen,
+              color: Colors.white,
             ),
           );
         }
@@ -219,7 +232,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           Map<String, dynamic> userData = user.data() as Map<String, dynamic>;
           return userData["email"] != currentUserEmail;
         }).toList();
-        
+
         // Debug print for filtered users
         print("Filtered users count after removing current user: ${users.length}");
 
@@ -246,9 +259,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _searchQuery.isNotEmpty 
-                    ? "No users found matching '$_searchQuery'"
-                    : "No conversations yet",
+                  _searchQuery.isNotEmpty
+                      ? "No users found matching '$_searchQuery'"
+                      : "No conversations yet",
                   style: TextStyle(
                     color: Colors.grey[500],
                     fontSize: 16,
@@ -265,11 +278,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             if (processedSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(
                 child: CircularProgressIndicator(
-                  color: kWhatsAppLightGreen,
+                  color: Colors.white,
                 ),
               );
             }
-            
+
             if (processedSnapshot.hasError) {
               print("Error processing users: ${processedSnapshot.error}");
               return Center(
@@ -308,7 +321,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
             return ListView.builder(
               padding: const EdgeInsets.only(top: 8),
-
               itemCount: processedUsers.length,
               itemBuilder: (context, index) {
                 return _buildUserListItemFromProcessed(processedUsers[index], context);
@@ -331,12 +343,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
         // Get messages for this user
         QuerySnapshot messagesSnapshot = await _chatServices.getMessages(
-          userId, currentUserId
-        ).first;
+            userId, currentUserId)
+            .first;
 
         List<QueryDocumentSnapshot> messages = messagesSnapshot.docs;
-        
-        bool hasMessages = messages.isNotEmpty;
 
         // Filter out messages sent by the current user when calculating unread count
         int unreadCount = messages.where((msg) {
@@ -344,28 +354,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           return !messageData['isRead'] && messageData['senderId'] != currentUserId;
         }).length;
 
-        // Get the last message (regardless of sender)
-        String lastMessage = "No messages yet";
+        // Get the last message time
         Timestamp lastMessageTime = Timestamp.fromDate(DateTime(2000));
-        
-        if (hasMessages) {
+        if (messages.isNotEmpty) {
           // Sort messages by timestamp (newest last)
           messages.sort((a, b) {
             Timestamp aTime = (a.data() as Map<String, dynamic>)['timestamp'] as Timestamp;
             Timestamp bTime = (b.data() as Map<String, dynamic>)['timestamp'] as Timestamp;
             return aTime.compareTo(bTime);
           });
-          
-          lastMessage = (messages.last.data() as Map<String, dynamic>)['message'];
+
           lastMessageTime = (messages.last.data() as Map<String, dynamic>)['timestamp'];
         }
 
         // Add processed user data with message info
         processedUsers.add({
           'userData': userData,
-          'hasMessages': hasMessages,
           'unreadCount': unreadCount,
-          'lastMessage': lastMessage,
           'lastMessageTime': lastMessageTime,
         });
       } catch (e) {
@@ -375,18 +380,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       }
     }
 
-    // Modified sorting logic - Sort users by last message time (newest first)
+    // Sort users by last message time (newest first)
     processedUsers.sort((a, b) {
-      // If both have messages, sort by timestamp (newest first)
-      if (a['hasMessages'] && b['hasMessages']) {
-        return b['lastMessageTime'].compareTo(a['lastMessageTime']);
-      }
-      // Otherwise, prioritize those with messages
-      if (a['hasMessages']) return -1;
-      if (b['hasMessages']) return 1;
-      
-      // If neither has messages, keep original order
-      return 0;
+      return b['lastMessageTime'].compareTo(a['lastMessageTime']);
     });
 
     return processedUsers;
@@ -396,20 +392,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     Map<String, dynamic> user = processedData['userData'];
     String displayName = user["username"] ?? user["email"].toString().split('@')[0];
     String userId = user["uid"];
-    bool hasMessages = processedData['hasMessages'];
-    bool hasUnread = processedData['unreadCount'] > 0;
     int unreadCount = processedData['unreadCount'];
-    String lastMessage = processedData['lastMessage'];
     Timestamp lastMessageTime = processedData['lastMessageTime'];
 
-   // Format timestamp
+    // Format timestamp in 12-hour format
     String timeString = "";
-    if (hasMessages) {
+    if (lastMessageTime != null) {
       DateTime messageDateTime = lastMessageTime.toDate();
       DateTime now = DateTime.now();
-      bool isToday = messageDateTime.year == now.year && 
-                      messageDateTime.month == now.month && 
-                      messageDateTime.day == now.day;
+      bool isToday = messageDateTime.year == now.year &&
+          messageDateTime.month == now.month &&
+          messageDateTime.day == now.day;
 
       if (isToday) {
         // Format as 12-hour time with AM/PM for today's messages
@@ -428,10 +421,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       children: [
         InkWell(
           onTap: () async {
-            // Mark all unread messages from this user as read before navigating
-            await _markAllMessagesAsRead(userId);
-
-            // Navigate to chat page and wait for it to complete
+            // Navigate to the chat page immediately
             await Navigator.push(
               context,
               MaterialPageRoute(
@@ -441,8 +431,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 ),
               ),
             );
-            
-            // Explicitly refresh the user list when returning from chat
+
+            // After returning from the chat page, mark messages as read and refresh the list
+            await _markAllMessagesAsRead(userId);
             _refreshUserList();
           },
           child: Container(
@@ -450,20 +441,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             color: Colors.transparent,
             child: Row(
               children: [
-              CircleAvatar(
-  backgroundColor: kWhatsAppLightGreen,
-  radius: 25,
-  backgroundImage: user["profilePicUrl"] != null && user["profilePicUrl"].isNotEmpty
-      ? NetworkImage(user["profilePicUrl"]) // Use the profile picture URL if available
-      : null, // Set backgroundImage to null when no profile picture is available
-  child: user["profilePicUrl"] == null || user["profilePicUrl"].isEmpty
-      ? Icon(
-          Icons.person, // Use the person icon from Flutter's built-in icons
-          size: 30, // Adjust the size of the icon as needed
-          color: Colors.white, // Set the color of the icon
-        )
-      : null, // Show the icon if no profile picture is available
-),
+                CircleAvatar(
+                  backgroundColor: kDarkCardColor,
+                  radius: 25,
+                  backgroundImage: user["profilePicUrl"] != null && user["profilePicUrl"].isNotEmpty
+                      ? NetworkImage(user["profilePicUrl"]) // Use the profile picture URL if available
+                      : null, // Set backgroundImage to null when no profile picture is available
+                  child: user["profilePicUrl"] == null || user["profilePicUrl"].isEmpty
+                      ? const Icon(
+                    Icons.person, // Use the person icon from Flutter's built-in icons
+                    size: 30, // Adjust the size of the icon as needed
+                    color: Colors.white, // Set the color of the icon
+                  )
+                      : null, // Show the icon if no profile picture is available
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -488,7 +479,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 Icon(Icons.circle, size: 10, color: kOnlineGreen),
                             ],
                           ),
-                          if (hasMessages)
+                          if (lastMessageTime != null)
                             Text(
                               timeString,
                               style: TextStyle(
@@ -501,19 +492,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Expanded(
-                            child: Text(
-                              lastMessage,
-                              style: TextStyle(
-                                color: hasUnread ? Colors.white : Colors.grey[500],
-                                fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (hasUnread)
+                          if (unreadCount > 0)
                             CircleAvatar(
                               backgroundColor: kOnlineGreen,
                               radius: 10,
@@ -535,21 +514,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       ],
     );
   }
-  
+
   // New method to mark all messages from a specific user as read
   Future<void> _markAllMessagesAsRead(String senderId) async {
     try {
       String currentUserId = _authService.getCurrentUser()!.uid;
-      
+
       // Get all unread messages from this sender
       QuerySnapshot messagesSnapshot = await _chatServices.getMessages(senderId, currentUserId).first;
-      
+
       // Get unread messages not sent by current user
       List<QueryDocumentSnapshot> unreadMessages = messagesSnapshot.docs.where((msg) {
         Map<String, dynamic> messageData = msg.data() as Map<String, dynamic>;
         return !messageData['isRead'] && messageData['senderId'] == senderId;
       }).toList();
-      
+
       // Mark each message as read
       for (var msg in unreadMessages) {
         await _chatServices.markMessageAsRead(msg.id, senderId);

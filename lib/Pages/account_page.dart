@@ -270,6 +270,7 @@ class _AccountPageState extends State<AccountPage> {
       appBar: AppBar(
         title: const Text('Account Settings'),
         centerTitle: true,
+        backgroundColor: Color(0xFF1F1A24), // Matching the dark theme
         actions: [
           IconButton(
             onPressed: _isRefreshing ? null : _loadUserData,
@@ -284,177 +285,229 @@ class _AccountPageState extends State<AccountPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // User Info Card
-              Card(
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Your Account',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      Text('Email: ${_emailController.text}'),
-                      const SizedBox(height: 5),
-                      if (_auth.currentUser != null)
-                        Row(
-                          children: [
-                            Icon(
-                              _auth.currentUser!.emailVerified ? Icons.verified : Icons.warning,
-                              color: _auth.currentUser!.emailVerified ? Colors.green : Colors.orange,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              _auth.currentUser!.emailVerified
-                                  ? 'Email verified'
-                                  : 'Email not verified',
-                              style: TextStyle(
-                                color: _auth.currentUser!.emailVerified ? Colors.green : Colors.orange,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (!_auth.currentUser!.emailVerified)
-                              TextButton(
-                                onPressed: _isSendingVerification ? null : _sendVerificationEmail,
-                                child: _isSendingVerification
-                                  ? const SizedBox(
-                                      height: 16,
-                                      width: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : const Text('Send Verification Email'),
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-            
-              // Update Username Section
-              Card(
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Update Username',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _usernameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Username',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isUpdatingUsername ? null : _updateUsername,
-                          child: _isUpdatingUsername
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('Update Username'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Update Password Section
-              Card(
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Update Password',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _currentPasswordController,
-                        obscureText: _obscureCurrentPassword,
-                        decoration: InputDecoration(
-                          labelText: 'Current Password',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.lock),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureCurrentPassword ? Icons.visibility : Icons.visibility_off,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscureCurrentPassword = !_obscureCurrentPassword;
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _newPasswordController,
-                        obscureText: _obscureNewPassword,
-                        decoration: InputDecoration(
-                          labelText: 'New Password',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.lock_open),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureNewPassword ? Icons.visibility : Icons.visibility_off,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscureNewPassword = !_obscureNewPassword;
-                              });
-                            },
-                          ),
-                          helperText: 'Password must be at least 6 characters',
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isUpdatingPassword ? null : _updatePassword,
-                          child: _isUpdatingPassword
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('Update Password'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0F0028), // Even darker, more intense purple
+              Color(0xFF330066), // Deeper, saturated violet
+              Colors.black87, // Slightly transparent black for depth
             ],
+            stops: [0.0, 0.6, 1.0],
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // User Info Card
+                Card(
+                  elevation: 4,
+                  color: Color(0xFF1F1A24), // Matching the dark theme
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Your Account',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Email: ${_emailController.text}',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        const SizedBox(height: 5),
+                        if (_auth.currentUser != null)
+                          Row(
+                            children: [
+                              Icon(
+                                _auth.currentUser!.emailVerified ? Icons.verified : Icons.warning,
+                                color: _auth.currentUser!.emailVerified ? Colors.green : Colors.orange,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                _auth.currentUser!.emailVerified
+                                    ? 'Email verified'
+                                    : 'Email not verified',
+                                style: TextStyle(
+                                  color: _auth.currentUser!.emailVerified ? Colors.green : Colors.orange,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (!_auth.currentUser!.emailVerified)
+                                TextButton(
+                                  onPressed: _isSendingVerification ? null : _sendVerificationEmail,
+                                  child: _isSendingVerification
+                                    ? const SizedBox(
+                                        height: 16,
+                                        width: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Text(
+                                        'Send Verification Email',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              
+                // Update Username Section
+                Card(
+                  elevation: 4,
+                  color: Color(0xFF1F1A24), // Matching the dark theme
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Update Username',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _usernameController,
+                          style: TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'Username',
+                            labelStyle: TextStyle(color: Colors.white70),
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.person, color: Colors.white70),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isUpdatingUsername ? null : _updateUsername,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF330066), // Matching the deeper violet
+                              foregroundColor: Colors.white,
+                            ),
+                            child: _isUpdatingUsername
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Text('Update Username'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Update Password Section
+                Card(
+                  elevation: 4,
+                  color: Color(0xFF1F1A24), // Matching the dark theme
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Update Password',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _currentPasswordController,
+                          obscureText: _obscureCurrentPassword,
+                          style: TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'Current Password',
+                            labelStyle: TextStyle(color: Colors.white70),
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.lock, color: Colors.white70),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureCurrentPassword ? Icons.visibility : Icons.visibility_off,
+                                color: Colors.white70,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscureCurrentPassword = !_obscureCurrentPassword;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: _newPasswordController,
+                          obscureText: _obscureNewPassword,
+                          style: TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'New Password',
+                            labelStyle: TextStyle(color: Colors.white70),
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.lock_open, color: Colors.white70),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureNewPassword ? Icons.visibility : Icons.visibility_off,
+                                color: Colors.white70,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscureNewPassword = !_obscureNewPassword;
+                                });
+                              },
+                            ),
+                            helperText: 'Password must be at least 6 characters',
+                            helperStyle: TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isUpdatingPassword ? null : _updatePassword,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF330066), // Matching the deeper violet
+                              foregroundColor: Colors.white,
+                            ),
+                            child: _isUpdatingPassword
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Text('Update Password'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
